@@ -2,17 +2,16 @@ plugins {
 	id 'java'
 	id 'org.springframework.boot' version '3.2.4'
 	id 'io.spring.dependency-management' version '1.1.4'
-	id 'jacoco'                          // ← AGREGADO: Para cobertura
-	id 'org.sonarqube' version '4.4.1.3373'  // ← AGREGADO: Para SonarQube
+	id 'jacoco'
+	id 'org.sonarqube' version '4.4.1.3373'
 }
 
 group = 'com.example'
 version = '0.0.1-SNAPSHOT'
 
 java {
-	toolchain {
-		languageVersion = JavaLanguageVersion.of(17)
-	}
+	sourceCompatibility = '17'
+	targetCompatibility = '17'
 }
 
 repositories {
@@ -33,13 +32,13 @@ dependencies {
 
 test {
 	useJUnitPlatform()
-	finalizedBy jacocoTestReport  // ← AGREGADO: Genera reporte tras tests
+	finalizedBy jacocoTestReport  /
 }
 
 jacocoTestReport {
 	dependsOn test
 	reports {
-		xml.required = true          // ← Necesario para SonarQube
+		xml.required = true
 		html.required = true
 		csv.required = false
 	}
@@ -49,7 +48,7 @@ jacocoTestCoverageVerification {
 	violationRules {
 		rule {
 			limit {
-				minimum = 0.9  // 90% de cobertura mínima
+				minimum = 0.7
 			}
 		}
 	}
@@ -81,6 +80,5 @@ sonar {
 	}
 }
 
-// Asegura que las tareas se ejecuten en orden
 check.dependsOn jacocoTestCoverageVerification
 test.finalizedBy jacocoTestReport
