@@ -35,12 +35,6 @@ pipeline {
             steps {
                 sh './gradlew jacocoTestReport'
             }
-            post {
-                success {
-                    // Opcional: publicar reporte de JaCoCo en Jenkins
-                    jacoco execPattern: 'build/jacoco/test.exec'
-                }
-            }
         }
 
         stage('Análisis SonarQube') {
