@@ -58,7 +58,7 @@ jacocoTestCoverageVerification {
 sonar {
 	properties {
 		property 'sonar.host.url', 'http://localhost:9000'
-		property 'sonar.login', 'sqp_c38ea69da445058bd28f7a38cb2f5221323d83a9'
+		property 'sonar.login', 'sqp_6328792bf5b542b17f9e6e1632e34c78eeda3932'
 		property 'sonar.projectKey', 'demo'
 		property 'sonar.projectName', 'Demo SonarQube'
 
