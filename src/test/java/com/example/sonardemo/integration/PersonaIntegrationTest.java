@@ -35,7 +35,6 @@ class PersonaIntegrationTest {
 
     @Test
     void testCrearYListarPersonas() throws Exception {
-        // Crear primera persona
         Persona persona1 = new Persona(null, "Carlos", "carlos@email.com", 30);
 
         mockMvc.perform(post("/api/personas")
