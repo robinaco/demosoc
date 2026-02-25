@@ -8,6 +8,7 @@ pipeline {
     environment {
         SONAR_HOST_URL = 'http://sonarqube:9000'
         // BRANCH_NAME = "${env.BRANCH_NAME}"
+
     }
 
     stages {
