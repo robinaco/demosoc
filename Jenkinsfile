@@ -56,12 +56,29 @@ pipeline {
     post {
         always {
             cleanWs()
+            echo "Pipeline finalizado. Build #${env.BUILD_NUMBER}"
         }
+
         success {
-            echo 'Pipeline completado exitosamente!'
+            echo "¡Todo salió perfecto!"
+            echo "   - Compilación: OK"
+            echo "   - Pruebas: ${currentBuild.testSummary}"
+            echo "   - Cobertura: >70% (según JaCoCo)"
+            echo "   - Calidad: Aprobada por SonarQube"
+            echo ""
+            echo "Ver resultados en SonarQube: http://sonarqube:9000/dashboard?id=demo"
         }
+
         failure {
-            echo 'Pipeline falló. Revisa los logs.'
+            echo "El pipeline falló. Revisa los logs en:"
+            echo "   ${env.BUILD_URL}console"
+        }
+
+        unstable {
+            echo "Pipeline inestable. Posibles causas:"
+            echo "   - Pruebas fallaron pero no críticas"
+            echo "   - Umbral de cobertura no alcanzado"
+            echo "   - Quality Gate con advertencias"
         }
     }
 }
