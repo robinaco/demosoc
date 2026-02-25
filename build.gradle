@@ -77,6 +77,26 @@ sonar {
 
 		property 'sonar.verbose', 'true'
 
+		// Clasificación de tests para SonarQube
+		property 'sonar.test', 'src/test/java'
+		property 'sonar.junit.reportPaths', 'build/test-results/test'
+
+		// Tests unitarios
+		property 'sonar.tests.unit', 'src/test/java/unit'
+		property 'sonar.coverage.unit', 'build/reports/jacoco/test/jacocoTestReport.xml'
+
+		// Tests de componente
+		property 'sonar.tests.component', 'src/test/java/component'
+		property 'sonar.coverage.component', 'build/reports/jacoco/test/jacocoTestReport.xml'
+
+		// Tests de integración
+		property 'sonar.tests.integration', 'src/test/java/integration'
+		property 'sonar.coverage.integration', 'build/reports/jacoco/test/jacocoTestReport.xml'
+
+		// Tests E2E
+		property 'sonar.tests.e2e', 'src/test/java/e2e'
+		property 'sonar.coverage.e2e', 'build/reports/jacoco/test/jacocoTestReport.xml'
+
 	}
 }
 
