@@ -59,6 +59,7 @@ pipeline {
             echo "Pipeline finalizado. Build #${env.BUILD_NUMBER}"
         }
 
+
         success {
             echo "¡Todo salió perfecto!"
             echo "   - Compilación: OK"
