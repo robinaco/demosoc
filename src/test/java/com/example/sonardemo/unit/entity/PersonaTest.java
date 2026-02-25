@@ -1,6 +1,10 @@
-package com.example.sonardemo.entity;
+package com.example.sonardemo.unit.entity;
 
+import com.example.sonardemo.entity.Persona;
 import org.junit.jupiter.api.Test;
+
+import java.lang.reflect.Method;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 class PersonaTest {
@@ -61,13 +65,15 @@ class PersonaTest {
     }
 
     @Test
-    void testCanEqual() {
+    void testCanEqual() throws Exception {
         Persona persona = new Persona();
-        assertTrue(persona.canEqual(new Persona()));
-        assertFalse(persona.canEqual(new Object()));
+        Method canEqual = Persona.class.getDeclaredMethod("canEqual", Object.class);
+        canEqual.setAccessible(true);
+
+        assertTrue((Boolean) canEqual.invoke(persona, new Persona()));
+        assertFalse((Boolean) canEqual.invoke(persona, new Object()));
     }
 
-    // Prueba para asegurar que todos los métodos de JPA están presentes
     @Test
     void testJpaMethods() throws NoSuchMethodException {
         Persona persona = new Persona();

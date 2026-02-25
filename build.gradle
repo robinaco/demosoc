@@ -1,103 +1,164 @@
 plugins {
-	id 'java'
-	id 'org.springframework.boot' version '3.2.4'
-	id 'io.spring.dependency-management' version '1.1.4'
-	id 'jacoco'
-	id 'org.sonarqube' version '4.4.1.3373'
+    id 'java'
+    id 'org.springframework.boot' version '3.2.4'
+    id 'io.spring.dependency-management' version '1.1.4'
+    id 'jacoco'
+    id 'org.sonarqube' version '4.4.1.3373'
 }
 
 group = 'com.example'
 version = '0.0.1-SNAPSHOT'
 
 java {
-	sourceCompatibility = '17'
-	targetCompatibility = '17'
+    sourceCompatibility = '17'
+    targetCompatibility = '17'
 }
 
 repositories {
-	mavenCentral()
+    mavenCentral()
 }
 
 dependencies {
-	implementation 'org.springframework.boot:spring-boot-starter-web'
-	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-	runtimeOnly 'com.h2database:h2'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    runtimeOnly 'com.h2database:h2'
 
-	// Para pruebas (ya los tienes)
-	testImplementation 'org.springframework.boot:spring-boot-starter-test'
-	testImplementation 'org.mockito:mockito-core'
-	compileOnly 'org.projectlombok:lombok'
-	annotationProcessor 'org.projectlombok:lombok'
+    // Para pruebas (ya los tienes)
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.mockito:mockito-core'
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
 }
 
 test {
-	useJUnitPlatform()
-	finalizedBy jacocoTestReport
+    useJUnitPlatform()
+    finalizedBy jacocoTestReport
 }
 
 jacocoTestReport {
-	dependsOn test
-	reports {
-		xml.required = true
-		html.required = true
-		csv.required = false
-	}
+    dependsOn test
+    reports {
+        xml.required = true
+        html.required = true
+        csv.required = false
+    }
 }
 
+task jacocoUnitTestReport(type: JacocoReport, dependsOn: test) {
+    reports {
+        xml.required = true
+        html.required = true
+        csv.required = false
+    }
+
+    // Filtrar solo las clases de unit
+    sourceDirectories.setFrom(files(sourceSets.main.allSource.srcDirs))
+    classDirectories.setFrom(files(sourceSets.main.output))
+
+    // Incluir solo los tests de unit
+    executionData.setFrom(fileTree(layout.buildDirectory.asFile.get()).include("jacoco/test.exec"))
+}
+
+task jacocoComponentTestReport(type: JacocoReport, dependsOn: test) {
+    reports {
+        xml.required = true
+        html.required = true
+        csv.required = false
+    }
+
+    sourceDirectories.setFrom(files(sourceSets.main.allSource.srcDirs))
+    classDirectories.setFrom(files(sourceSets.main.output))
+    executionData.setFrom(fileTree(layout.buildDirectory.asFile.get()).include("jacoco/test.exec"))
+}
+
+task jacocoIntegrationTestReport(type: JacocoReport, dependsOn: test) {
+    reports {
+        xml.required = true
+        html.required = true
+        csv.required = false
+    }
+
+    sourceDirectories.setFrom(files(sourceSets.main.allSource.srcDirs))
+    classDirectories.setFrom(files(sourceSets.main.output))
+    executionData.setFrom(fileTree(layout.buildDirectory.asFile.get()).include("jacoco/test.exec"))
+}
+
+task jacocoE2ETestReport(type: JacocoReport, dependsOn: test) {
+    reports {
+        xml.required = true
+        html.required = true
+        csv.required = false
+    }
+
+    sourceDirectories.setFrom(files(sourceSets.main.allSource.srcDirs))
+    classDirectories.setFrom(files(sourceSets.main.output))
+    executionData.setFrom(fileTree(layout.buildDirectory.asFile.get()).include("jacoco/test.exec"))
+}
+
+
 jacocoTestCoverageVerification {
-	violationRules {
-		rule {
-			limit {
-				minimum = 0.7
-			}
-		}
-	}
+    violationRules {
+        rule {
+            limit {
+                minimum = 0.7
+            }
+        }
+    }
 }
 
 sonar {
-	properties {
-		property 'sonar.host.url', 'http://localhost:9000'
-		property 'sonar.login', 'sqp_6328792bf5b542b17f9e6e1632e34c78eeda3932'
-		property 'sonar.projectKey', 'demo'
-		property 'sonar.projectName', 'Demo SonarQube'
+    properties {
+        // Configuración básica del servidor
+        property 'sonar.host.url', 'http://localhost:9000'
+        property 'sonar.login', 'sqp_6328792bf5b542b17f9e6e1632e34c78eeda3932'
+        property 'sonar.projectKey', 'demo'
+        property 'sonar.projectName', 'Demo SonarQube'
 
-		property 'sonar.sources', 'src/main/java'
-		property 'sonar.tests', 'src/test/java'
-		property 'sonar.java.binaries', 'build/classes/java/main'
-		property 'sonar.java.test.binaries', 'build/classes/java/test'
+        // Rutas de código fuente
+        property 'sonar.sources', 'src/main/java'
+        property 'sonar.java.binaries', 'build/classes/java/main'
+        property 'sonar.java.libraries', 'build/libs/*.jar'
 
-		property 'sonar.coverage.jacoco.xmlReportPaths', 'build/reports/jacoco/test/jacocoTestReport.xml'
-		// Reportes de pruebas
-		property 'sonar.junit.reportPaths', 'build/test-results/test'
-		// Excluir clases que no deben medirse
-		property 'sonar.exclusions', '**/*Test.java'
+        // =============================================
+        // TESTS UNITARIOS (80% cobertura)
+        // =============================================
+        property 'sonar.tests.unit', 'src/test/java/unit'
+        property 'sonar.coverage.unit', 'build/reports/jacoco/test/jacocoTestReport.xml'
 
-		// Forzar a que Sonar use los datos de JaCoCo
-		property 'sonar.coverage.exclusions', ''
+        // =============================================
+        // TESTS DE COMPONENTE (80% cobertura)
+        // =============================================
+        property 'sonar.tests.component', 'src/test/java/component'
+        property 'sonar.coverage.component', 'build/reports/jacoco/test/jacocoTestReport.xml'
 
-		property 'sonar.verbose', 'true'
+        // =============================================
+        // TESTS DE INTEGRACIÓN (100% cobertura)
+        // =============================================
+        property 'sonar.tests.integration', 'src/test/java/integration'
+        property 'sonar.coverage.integration', 'build/reports/jacoco/test/jacocoTestReport.xml'
 
-		// Clasificación de tests para SonarQube
-		property 'sonar.test', 'src/test/java'
-		property 'sonar.junit.reportPaths', 'build/test-results/test'
+        // =============================================
+        // TESTS E2E (100% cobertura)
+        // =============================================
+        property 'sonar.tests.e2e', 'src/test/java/e2e'
+        property 'sonar.coverage.e2e', 'build/reports/jacoco/test/jacocoTestReport.xml'
 
-		// Tests unitarios
-		property 'sonar.tests.unit', 'src/test/java/unit'
-		property 'sonar.coverage.unit', 'build/reports/jacoco/test/jacocoTestReport.xml'
+        // Reporte unificado de JUnit
+        property 'sonar.junit.reportPaths', 'build/test-results/test'
 
-		// Tests de componente
-		property 'sonar.tests.component', 'src/test/java/component'
-		property 'sonar.coverage.component', 'build/reports/jacoco/test/jacocoTestReport.xml'
+        // Reporte de cobertura principal (para JaCoCo)
+        property 'sonar.coverage.jacoco.xmlReportPaths', 'build/reports/jacoco/test/jacocoTestReport.xml'
 
-		// Tests de integración
-		property 'sonar.tests.integration', 'src/test/java/integration'
-		property 'sonar.coverage.integration', 'build/reports/jacoco/test/jacocoTestReport.xml'
+        // Excluir clases que no deben medirse
+        property 'sonar.exclusions', '**/*Test.java'
 
-		// Tests E2E
-		property 'sonar.tests.e2e', 'src/test/java/e2e'
-		property 'sonar.coverage.e2e', 'build/reports/jacoco/test/jacocoTestReport.xml'
+        // Verbose para debugging
+        property 'sonar.verbose', 'false'
+    }
+}
 
-	}
+tasks.named('sonar').configure {
+    dependsOn jar
 }
 
 check.dependsOn jacocoTestCoverageVerification

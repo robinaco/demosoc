@@ -34,4 +34,15 @@ public class PersonaController {
         Persona nuevaPersona = personaService.guardar(persona);
         return new ResponseEntity<>(nuevaPersona, HttpStatus.CREATED);
     }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Persona> actualizar(@PathVariable Long id, @RequestBody Persona persona) {
+        try {
+            Persona personaActualizada = personaService.actualizar(id, persona);
+            return ResponseEntity.ok(personaActualizada);
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
 }

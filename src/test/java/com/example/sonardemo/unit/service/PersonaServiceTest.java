@@ -1,7 +1,8 @@
-package com.example.sonardemo.service;
+package com.example.sonardemo.unit.service;
 
 import com.example.sonardemo.entity.Persona;
 import com.example.sonardemo.repository.PersonaRepository;
+import com.example.sonardemo.service.PersonaService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

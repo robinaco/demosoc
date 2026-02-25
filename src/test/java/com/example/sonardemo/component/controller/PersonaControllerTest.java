@@ -1,5 +1,6 @@
-package com.example.sonardemo.controller;
+package com.example.sonardemo.component.controller;
 
+import com.example.sonardemo.controller.PersonaController;
 import com.example.sonardemo.entity.Persona;
 import com.example.sonardemo.service.PersonaService;
 import com.fasterxml.jackson.databind.ObjectMapper;
