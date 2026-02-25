@@ -32,7 +32,7 @@ dependencies {
 
 test {
 	useJUnitPlatform()
-	finalizedBy jacocoTestReport  /
+	finalizedBy jacocoTestReport
 }
 
 jacocoTestReport {
