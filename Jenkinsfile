@@ -62,11 +62,12 @@ pipeline {
         success {
             echo "¡Todo salió perfecto!"
             echo "   - Compilación: OK"
-            echo "   - Pruebas: ${currentBuild.testSummary}"
+            echo "   - Pruebas: Todas pasaron (ver reporte)"
             echo "   - Cobertura: >70% (según JaCoCo)"
             echo "   - Calidad: Aprobada por SonarQube"
             echo ""
             echo "Ver resultados en SonarQube: http://sonarqube:9000/dashboard?id=demo"
+            echo "Ver reporte de pruebas: ${env.BUILD_URL}testReport/"
         }
 
         failure {
