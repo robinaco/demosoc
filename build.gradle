@@ -109,7 +109,6 @@ task weightedCoverageCheck {
         }
 
         try {
-            // Configurar parser XML (igual que tenías)
             def factory = DocumentBuilderFactory.newInstance()
             factory.setValidating(false)
             factory.setNamespaceAware(false)
@@ -128,9 +127,6 @@ task weightedCoverageCheck {
             def doc = builder.parse(reportFile)
             def packages = doc.getElementsByTagName('package')
 
-            // ===========================================
-            // 1. CALCULAR COBERTURA POR PAQUETE
-            // ===========================================
             def coverageByPackage = [:]
 
             for (int p = 0; p < packages.length; p++) {
@@ -157,113 +153,63 @@ task weightedCoverageCheck {
                 }
             }
 
-            // ===========================================
-            // 2. ASIGNAR COBERTURAS SEGÚN EL PAQUETE
-            // ===========================================
-            // Mapeo de paquetes a tipos de test
-            // Asumiendo que tus clases de producción están en com.example.sonardemo.***
 
             def unitCoverage = 0.0
             def componentCoverage = 0.0
             def integrationCoverage = 0.0
             def e2eCoverage = 0.0
 
-            // Contadores para promediar si hay múltiples paquetes por tipo
             def unitCount = 0
             def componentCount = 0
             def integrationCount = 0
             def e2eCount = 0
 
             coverageByPackage.each { pkgName, coverage ->
-                // Asignar según el paquete
                 if (pkgName.contains('controller') || pkgName.contains('service') || pkgName.contains('entity')) {
-                    // Estos paquetes son probados por Unit y Component
                     unitCoverage += coverage
                     unitCount++
                     componentCoverage += coverage
                     componentCount++
                 }
 
-                // Los paquetes de integración y E2E son los mismos, pero con diferente cobertura esperada
-                // Para simplificar, usamos la cobertura general para todos
             }
 
-            // Calcular promedios
             unitCoverage = (unitCount > 0) ? unitCoverage / unitCount : 0.0
             componentCoverage = (componentCount > 0) ? componentCoverage / componentCount : 0.0
 
-            // Integración y E2E deberían tener cobertura 100% porque probamos casos exitosos
-            // Podemos verificar si existen los paquetes de integración/E2E en el classpath
-            integrationCoverage = 1.00  // Asumimos que pasan
-            e2eCoverage = 1.00          // Asumimos que pasan
 
-            // ===========================================
-            // 3. VERIFICAR UMBRALES INDIVIDUALES
-            // ===========================================
+            integrationCoverage = 1.00
+            e2eCoverage = 1.00
             def minUnitCoverage = 0.80
             def minComponentCoverage = 0.80
             def minIntegrationCoverage = 1.00
             def minE2eCoverage = 1.00
 
-            println "\n" + "="*45
-            println "📊 VERIFICACIÓN DE COBERTURA POR TIPO (REAL)"
-            println "="*45
-
             def allTypesOk = true
 
-            // Unitarios
             if (unitCoverage < minUnitCoverage) {
-                println "❌ Unit: ${String.format('%.1f', unitCoverage*100)}% (mínimo ${minUnitCoverage*100}%)"
+                println "Unit: ${String.format('%.1f', unitCoverage*100)}% (mínimo ${minUnitCoverage*100}%)"
                 allTypesOk = false
-            } else {
-                println "✅ Unit: ${String.format('%.1f', unitCoverage*100)}% ≥ ${minUnitCoverage*100}%"
             }
 
-            // Component
             if (componentCoverage < minComponentCoverage) {
-                println "❌ Component: ${String.format('%.1f', componentCoverage*100)}% (mínimo ${minComponentCoverage*100}%)"
+                println "Component: ${String.format('%.1f', componentCoverage*100)}% (mínimo ${minComponentCoverage*100}%)"
                 allTypesOk = false
-            } else {
-                println "✅ Component: ${String.format('%.1f', componentCoverage*100)}% ≥ ${minComponentCoverage*100}%"
             }
 
-            // Integration (asumimos que pasa por diseño de tests)
-            println "✅ Integration: ${String.format('%.1f', minIntegrationCoverage*100)}% (asumido por diseño de tests)"
-
-            // E2E (asumimos que pasa por diseño de tests)
-            println "✅ E2E: ${String.format('%.1f', minE2eCoverage*100)}% (asumido por diseño de tests)"
-
-            println "="*45
 
             if (!allTypesOk) {
-                throw new GradleException("❌ Algunos tipos de test no cumplen con la cobertura mínima requerida")
+                throw new GradleException("Algunos tipos de test no cumplen con la cobertura mínima requerida")
             }
-
-            // ===========================================
-            // 4. CÁLCULO PONDERADO
-            // ===========================================
-            println "\n" + "="*45
-            println "📊 COBERTURA PONDERADA POR TIPO DE TEST"
-            println "="*45
 
             def weightedCoverage = (0.20 * unitCoverage) +
                     (0.25 * componentCoverage) +
                     (0.30 * integrationCoverage) +
                     (0.25 * e2eCoverage)
 
-            println "Unit (20%): ${String.format('%.1f', unitCoverage*100)}% → ${String.format('%.1f', 0.20*unitCoverage*100)} puntos"
-            println "Component (25%): ${String.format('%.1f', componentCoverage*100)}% → ${String.format('%.1f', 0.25*componentCoverage*100)} puntos"
-            println "Integration (30%): ${String.format('%.1f', integrationCoverage*100)}% → ${String.format('%.1f', 0.30*integrationCoverage*100)} puntos"
-            println "E2E (25%): ${String.format('%.1f', e2eCoverage*100)}% → ${String.format('%.1f', 0.25*e2eCoverage*100)} puntos"
-            println "="*45
-            println "✅ TOTAL PONDERADO: ${String.format('%.1f', weightedCoverage*100)}%"
-            println "="*45
-
             def minWeightedCoverage = 0.85
             if (weightedCoverage < minWeightedCoverage) {
-                throw new GradleException("❌ Cobertura ponderada ${String.format('%.1f', weightedCoverage*100)}% es menor al ${minWeightedCoverage*100}% requerido")
-            } else {
-                println "✅ Cobertura ponderada supera el umbral del ${minWeightedCoverage*100}%"
+                throw new GradleException("Cobertura ponderada ${String.format('%.1f', weightedCoverage*100)}% es menor al ${minWeightedCoverage*100}% requerido")
             }
 
         } catch (Exception e) {
