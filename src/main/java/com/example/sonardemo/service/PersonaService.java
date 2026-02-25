@@ -8,10 +8,10 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Optional;
 
-@Service  // Indica que es un servicio de Spring
+@Service
 public class PersonaService {
 
-    @Autowired  // Inyecta el repositorio
+    @Autowired
     private PersonaRepository personaRepository;
 
     /**
@@ -21,7 +21,6 @@ public class PersonaService {
      * @throws IllegalArgumentException si la edad es negativa
      */
     public Persona guardar(Persona persona) {
-        // Validación de negocio
         if (persona.getEdad() < 0) {
             throw new IllegalArgumentException("La edad no puede ser negativa");
         }
