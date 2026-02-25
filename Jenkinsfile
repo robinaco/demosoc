@@ -7,7 +7,6 @@ pipeline {
 
     environment {
         SONAR_HOST_URL = 'http://sonarqube:9000'
-        // Opcional: puedes definir la rama si es necesario
         // BRANCH_NAME = "${env.BRANCH_NAME}"
     }
 
