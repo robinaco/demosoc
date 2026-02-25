@@ -37,16 +37,10 @@ public class PersonaController {
 
     @PutMapping("/{id}")
     public ResponseEntity<Persona> actualizar(@PathVariable Long id, @RequestBody Persona persona) {
-        System.out.println("=== DEBUG PUT ===");
-        System.out.println("ID recibido: " + id);
-        System.out.println("Persona recibida: " + persona);
-
         try {
             Persona personaActualizada = personaService.actualizar(id, persona);
-            System.out.println("Persona actualizada: " + personaActualizada);
             return ResponseEntity.ok(personaActualizada);
         } catch (RuntimeException e) {
-            System.out.println("ERROR: " + e.getMessage());
             return ResponseEntity.notFound().build();
         }
     }
