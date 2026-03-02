@@ -7,7 +7,7 @@ pipeline {
 
     environment {
         SONAR_HOST_URL = 'https://sonarcloud.io'
-        SONAR_TOKEN = credentials('SONAR_TOKEN')
+        SONAR_TOKEN = credentials('sonarcloud-token-robinaco')
         SONAR_ORG = 'robinaco'
         SONAR_PROJECT_KEY = 'robinaco_demosoc'
     }
