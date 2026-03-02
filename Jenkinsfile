@@ -7,7 +7,7 @@ pipeline {
 
     environment {
         SONAR_HOST_URL = 'https://sonarcloud.io'
-        SONAR_TOKEN = credentials('63906d6d08beaab467d35085848355886a2abec6')  // ← Aquí usa el token que guardaste
+        SONAR_TOKEN = credentials('63906d6d08beaab467d35085848355886a2abec6')
         SONAR_ORG = 'robinaco'
         SONAR_PROJECT_KEY = 'robinaco_demosoc'
     }
@@ -64,6 +64,7 @@ pipeline {
 
     post {
         always {
+            // ⚠️ IMPORTANTE: El cleanWs() debe estar dentro del post, pero YA ESTÁ DENTRO del pipeline
             cleanWs()
             echo "Pipeline finalizado. Build #${env.BUILD_NUMBER}"
         }
