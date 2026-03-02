@@ -38,9 +38,9 @@ pipeline {
             }
         }
 
+
         stage('Análisis SonarCloud') {
             steps {
-                // ⚠️ Usamos withSonarQubeEnv para que waitForQualityGate funcione
                 withSonarQubeEnv('SonarCloud') {
                     sh """
                         ./gradlew sonar \
