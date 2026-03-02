@@ -40,21 +40,24 @@ pipeline {
 
         stage('Análisis SonarCloud') {
             steps {
-                // ⚠️ IMPORTANTE: Pasar el token EXPLÍCITAMENTE como sonar.token
-                sh """
-                    ./gradlew sonar \
-                      -Dsonar.host.url=${SONAR_HOST_URL} \
-                      -Dsonar.organization=${SONAR_ORG} \
-                      -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
-                      -Dsonar.token=${SONAR_TOKEN} \
-                      -Dsonar.coverage.jacoco.xmlReportPaths=build/reports/jacoco/test/jacocoTestReport.xml
-                """
+                // ⚠️ Usamos withSonarQubeEnv para que waitForQualityGate funcione
+                withSonarQubeEnv('SonarCloud') {
+                    sh """
+                        ./gradlew sonar \
+                          -Dsonar.host.url=${SONAR_HOST_URL} \
+                          -Dsonar.organization=${SONAR_ORG} \
+                          -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                          -Dsonar.token=${SONAR_TOKEN} \
+                          -Dsonar.coverage.jacoco.xmlReportPaths=build/reports/jacoco/test/jacocoTestReport.xml
+                    """
+                }
             }
         }
 
         stage('Quality Gate') {
             steps {
                 timeout(time: 5, unit: 'MINUTES') {
+                    // ⚠️ Ahora waitForQualityGate encontrará el análisis anterior
                     waitForQualityGate abortPipeline: true
                 }
             }
