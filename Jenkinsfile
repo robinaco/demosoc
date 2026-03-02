@@ -40,13 +40,15 @@ pipeline {
 
         stage('Análisis SonarCloud') {
             steps {
-                withSonarQubeEnv('SonarCloud') {
-                    sh '''
-                ./gradlew sonar \
-                -Dsonar.organization=robinaco \
-                -Dsonar.projectKey=robinaco_demosoc
-            '''
-                }
+                // ⚠️ IMPORTANTE: Pasar el token EXPLÍCITAMENTE como sonar.token
+                sh """
+                    ./gradlew sonar \
+                      -Dsonar.host.url=${SONAR_HOST_URL} \
+                      -Dsonar.organization=${SONAR_ORG} \
+                      -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                      -Dsonar.token=${SONAR_TOKEN} \
+                      -Dsonar.coverage.jacoco.xmlReportPaths=build/reports/jacoco/test/jacocoTestReport.xml
+                """
             }
         }
 
@@ -62,7 +64,6 @@ pipeline {
     post {
         always {
             echo "Pipeline finalizado. Build #${env.BUILD_NUMBER}"
-            // 👇 IMPORTANTE: Ejecutar cleanWs dentro de un script node
             script {
                 node {
                     cleanWs()
