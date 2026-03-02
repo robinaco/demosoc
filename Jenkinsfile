@@ -7,7 +7,6 @@ pipeline {
 
     environment {
         SONAR_HOST_URL = 'https://sonarcloud.io'
-        SONAR_TOKEN = credentials('sonarcloud-token-robinaco')
         SONAR_ORG = 'robinaco'
         SONAR_PROJECT_KEY = 'robinaco_demosoc'
     }
@@ -40,15 +39,14 @@ pipeline {
 
         stage('Análisis SonarCloud') {
             steps {
-                withSonarQubeEnv('SonarCloud') {
-                    sh """
-                        ./gradlew sonar \
-                          -Dsonar.host.url=https://sonarcloud.io \
-                          -Dsonar.organization=robinaco \
-                          -Dsonar.projectKey=robinaco_demosoc \
-                          -Dsonar.login=$SONAR_TOKEN \
-                          -Dsonar.coverage.jacoco.xmlReportPaths=build/reports/jacoco/test/jacocoTestReport.xml
-                    """
+                withCredentials([string(credentialsId: 'sonarcloud-token-robinaco', variable: 'SONAR_TOKEN')]) {
+                    sh '''
+                ./gradlew sonar \
+                -Dsonar.host.url=https://sonarcloud.io \
+                -Dsonar.organization=robinaco \
+                -Dsonar.projectKey=robinaco_demosoc \
+                -Dsonar.login=$SONAR_TOKEN
+            '''
                 }
             }
         }
