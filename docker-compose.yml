@@ -30,6 +30,7 @@ services:
       - devops-net
     restart: unless-stopped
 
+
 volumes:
   jenkins_home:
   sonarqube_data:
