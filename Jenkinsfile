@@ -40,7 +40,6 @@ pipeline {
 
         stage('Análisis SonarCloud') {
             steps {
-                // Configurar SonarCloud como un servidor en Jenkins y usar withSonarQubeEnv
                 withSonarQubeEnv('SonarCloud') {
                     sh """
                         ./gradlew sonar \
@@ -65,8 +64,13 @@ pipeline {
 
     post {
         always {
-            cleanWs()
             echo "Pipeline finalizado. Build #${env.BUILD_NUMBER}"
+            // 👇 IMPORTANTE: Ejecutar cleanWs dentro de un script node
+            script {
+                node {
+                    cleanWs()
+                }
+            }
         }
 
         success {
