@@ -6,7 +6,10 @@ pipeline {
     }
 
     environment {
-        SONAR_HOST_URL = 'http://sonarqube:9000'
+        SONAR_HOST_URL = 'https://sonarcloud.io'
+        SONAR_TOKEN = credentials('63906d6d08beaab467d35085848355886a2abec6')  // ← Aquí usa el token que guardaste
+        SONAR_ORG = 'robinaco'
+        SONAR_PROJECT_KEY = 'robinaco_demosoc'
     }
 
     stages {
@@ -35,14 +38,20 @@ pipeline {
             }
         }
 
-        stage('Análisis SonarQube') {
+        stage('Análisis SonarCloud') {
             steps {
-                withSonarQubeEnv('SonarQube') {
-                    sh './gradlew sonar'
+                script {
+                    sh """
+                        ./gradlew sonar \
+                          -Dsonar.host.url=${SONAR_HOST_URL} \
+                          -Dsonar.organization=${SONAR_ORG} \
+                          -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                          -Dsonar.login=${SONAR_TOKEN} \
+                          -Dsonar.coverage.jacoco.xmlReportPaths=build/reports/jacoco/test/jacocoTestReport.xml
+                    """
                 }
             }
         }
-
 
         stage('Quality Gate') {
             steps {
@@ -59,15 +68,14 @@ pipeline {
             echo "Pipeline finalizado. Build #${env.BUILD_NUMBER}"
         }
 
-
         success {
             echo "¡Todo salió perfecto!"
             echo "   - Compilación: OK"
             echo "   - Pruebas: Todas pasaron (ver reporte)"
             echo "   - Cobertura: >70% (según JaCoCo)"
-            echo "   - Calidad: Aprobada por SonarQube"
+            echo "   - Calidad: Aprobada por SonarCloud"
             echo ""
-            echo "Ver resultados en SonarQube: http://sonarqube:9000/dashboard?id=demo"
+            echo "Ver resultados en SonarCloud: https://sonarcloud.io/dashboard?id=${SONAR_PROJECT_KEY}"
             echo "Ver reporte de pruebas: ${env.BUILD_URL}testReport/"
         }
 
