@@ -18,7 +18,6 @@ pipeline {
                 checkout scm
             }
         }
-
         stage('Compilar y Pruebas') {
             steps {
                 sh 'chmod +x gradlew'
@@ -31,16 +30,13 @@ pipeline {
                 }
             }
         }
-
         stage('Cobertura') {
             steps {
                 sh './gradlew jacocoTestReport'
             }
         }
-
         stage('Análisis SonarCloud') {
             steps {
-                // Forma segura de pasar el token
                 withEnv(["SONAR_TOKEN=${SONAR_TOKEN}"]) {
                     sh '''
                         ./gradlew sonar \
@@ -53,7 +49,6 @@ pipeline {
                 }
             }
         }
-
         stage('Quality Gate') {
             steps {
                 timeout(time: 5, unit: 'MINUTES') {
@@ -62,13 +57,11 @@ pipeline {
             }
         }
     }
-
     post {
         always {
             cleanWs()
             echo "Pipeline finalizado. Build #${env.BUILD_NUMBER}"
         }
-
         success {
             echo "¡Todo salió perfecto!"
             echo "   - Compilación: OK"
@@ -79,12 +72,10 @@ pipeline {
             echo "Ver resultados en SonarCloud: https://sonarcloud.io/dashboard?id=${SONAR_PROJECT_KEY}"
             echo "Ver reporte de pruebas: ${env.BUILD_URL}testReport/"
         }
-
         failure {
             echo "El pipeline falló. Revisa los logs en:"
             echo "   ${env.BUILD_URL}console"
         }
-
         unstable {
             echo "Pipeline inestable. Posibles causas:"
             echo "   - Pruebas fallaron pero no críticas"
