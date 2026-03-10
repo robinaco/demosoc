@@ -38,7 +38,6 @@ pipeline {
             }
         }
 
-
         stage('Análisis SonarCloud') {
             steps {
                 withSonarQubeEnv('SonarCloud') {
