@@ -71,7 +71,6 @@ pipeline {
             }
         }
 
-
         success {
             echo "¡Todo salió perfecto!"
             echo "   - Compilación: OK"
