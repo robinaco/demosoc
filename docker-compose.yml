@@ -1,16 +1,77 @@
-# docker-compose.yml
-version: '3'
+## docker-compose.yml
+#version: '3'
+#
+#services:
+#  jenkins:
+#    image: jenkins/jenkins:lts
+#    container_name: jenkins
+#    ports:
+#      - "8080:8080"
+#      - "50000:50000"
+#    volumes:
+#      - jenkins_home:/var/jenkins_home
+#      - /var/run/docker.sock:/var/run/docker.sock
+#    networks:
+#      - devops-net
+#    restart: unless-stopped
+#
+#  sonarqube:
+#    image: sonarqube:lts-community
+#    container_name: sonarqube
+#    ports:
+#      - "9000:9000"
+#    environment:
+#      - SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true
+#    volumes:
+#      - sonarqube_data:/opt/sonarqube/data
+#      - sonarqube_logs:/opt/sonarqube/logs
+#      - sonarqube_extensions:/opt/sonarqube/extensions
+#    networks:
+#      - devops-net
+#    restart: unless-stopped
+#
+#volumes:
+#  jenkins_home:
+#  sonarqube_data:
+#  sonarqube_logs:
+#  sonarqube_extensions:
+#
+#
+#networks:
+#  devops-net:
+#    driver: bridge
+
+version: '3.8'
 
 services:
   jenkins:
-    image: jenkins/jenkins:lts
+    image: jenkins/jenkins:lts-jdk17
     container_name: jenkins
     ports:
       - "8080:8080"
       - "50000:50000"
     volumes:
       - jenkins_home:/var/jenkins_home
-      - /var/run/docker.sock:/var/run/docker.sock
+      - jenkins_docker_certs:/certs/client  # Para DinD
+    environment:
+      - DOCKER_HOST=tcp://docker:2376
+      - DOCKER_TLS_VERIFY=1
+      - DOCKER_CERT_PATH=/certs/client
+    networks:
+      - devops-net
+    restart: unless-stopped
+    depends_on:
+      - docker
+
+  # Servicio Docker para DinD (Docker-in-Docker)
+  docker:
+    image: docker:24-dind
+    container_name: docker-dind
+    privileged: true  # Necesario para DinD
+    volumes:
+      - jenkins_docker_certs:/certs/client
+    environment:
+      - DOCKER_TLS_CERTDIR=/certs
     networks:
       - devops-net
     restart: unless-stopped
@@ -32,11 +93,13 @@ services:
 
 volumes:
   jenkins_home:
+  jenkins_docker_certs:
   sonarqube_data:
   sonarqube_logs:
   sonarqube_extensions:
 
-
 networks:
   devops-net:
     driver: bridge
+
+
