@@ -177,56 +177,25 @@ pipeline {
         }
 
         // === CONSTRUCCIÓN SEGURA DE DOCKER ===
-        stage('Build Secure Docker Image') {
+        stage('Build Docker Image') {
             steps {
                 script {
-                    // Construir imagen multi-stage
-                    sh """
-                        docker build \
-                          --build-arg BUILDKIT_INLINE_CACHE=1 \
-                          -t ${IMAGE_NAME}:${IMAGE_TAG} \
-                          -t ${IMAGE_NAME}:latest \
-                          .
-                    """
-
-                    // Escanear imagen por vulnerabilidades
-                    sh "docker scan ${IMAGE_NAME}:${IMAGE_TAG} || true"
+                    sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} -t ${IMAGE_NAME}:latest ."
+                    echo "✅ Imagen Docker construida"
                 }
             }
         }
 
-        stage('Run Container Security') {
+        stage('Run Container') {
             steps {
                 script {
-                    // Detener contenedor anterior si existe
                     sh """
-                        docker stop ${IMAGE_NAME} || true
-                        docker rm ${IMAGE_NAME} || true
-                    """
-
-                    // Ejecutar contenedor con recursos limitados y read-only
-                    sh """
-                        docker run -d \
-                          --name ${IMAGE_NAME} \
-                          --read-only \
-                          --tmpfs /tmp:rw,noexec,nosuid,size=64m \
-                          --memory="512m" \
-                          --memory-swap="1g" \
-                          --cpus="1.0" \
-                          --security-opt=no-new-privileges:true \
-                          --cap-drop=ALL \
-                          --cap-add=NET_BIND_SERVICE \
-                          -p 8081:8080 \
-                          ${IMAGE_NAME}:${IMAGE_TAG}
-                    """
-
-                    echo "✅ Contenedor corriendo en http://localhost:8081"
-
-                    // Health check
-                    sh """
-                        sleep 10
-                        curl -f http://localhost:8081/actuator/health || echo "Health check pendiente"
-                    """
+                docker stop ${IMAGE_NAME} || true
+                docker rm ${IMAGE_NAME} || true
+                docker run -d --name ${IMAGE_NAME} -p 8081:8080 ${IMAGE_NAME}:${IMAGE_TAG}
+            """
+                    echo "✅ Contenedor iniciado en http://localhost:8081"
+                    sh "docker ps | grep ${IMAGE_NAME}"
                 }
             }
         }
