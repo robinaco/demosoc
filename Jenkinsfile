@@ -113,7 +113,7 @@ pipeline {
         SONAR_PROJECT_KEY = 'robinaco_demosoc'
 
         // Docker seguro
-        DOCKER_REGISTRY = credentials('docker-registry-credentials') // Opcional
+        ///DOCKER_REGISTRY = credentials('docker-registry-credentials') // Opcional
         IMAGE_NAME = 'mi-crud-app'
         IMAGE_TAG = "${env.BUILD_NUMBER}"
     }
@@ -170,7 +170,7 @@ pipeline {
 
         stage('Quality Gate') {
             steps {
-                timeout(time: 10, unit: 'MINUTES') {
+                timeout(time: 1, unit: 'MINUTES') {
                     waitForQualityGate abortPipeline: true
                 }
             }
