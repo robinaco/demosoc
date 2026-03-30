@@ -235,10 +235,7 @@ pipeline {
     post {
         always {
             cleanWs()
-            script {
-                // Limpiar imágenes viejas (opcional)
-                sh "docker image prune -f --filter 'until=24h' || true"
-            }
+            sh "docker image prune -f --filter 'until=24h' || true"
         }
 
         success {
