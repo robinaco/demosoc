@@ -107,12 +107,7 @@
 //
 
 pipeline {
-    agent {
-        docker {
-            image 'docker:latest'
-            args '-v /var/run/docker.sock:/var/run/docker.sock'
-        }
-    }
+    agent any
 
     tools {
         jdk 'JDK17'
@@ -177,7 +172,6 @@ pipeline {
             }
         }
 
-        // NUEVO STAGE DE VALIDACIÓN - SOLO ESTO SE AGREGÓ
         stage('Validación QA y Aprobación Técnica') {
             when {
                 expression {
@@ -234,7 +228,6 @@ pipeline {
             }
         }
 
-        // Build Docker Image - SIN CAMBIOS, IGUAL QUE ANTES
         stage('Build Docker Image') {
             when {
                 expression {
@@ -249,7 +242,6 @@ pipeline {
             }
         }
 
-        // Run Container - SIN CAMBIOS, IGUAL QUE ANTES
         stage('Run Container') {
             when {
                 expression {
