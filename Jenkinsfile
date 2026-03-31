@@ -108,7 +108,12 @@
 
 pipeline {
     agent any
-
+    stage('Verificar Docker') {
+        steps {
+            sh 'docker --version'
+            sh 'docker ps'
+        }
+    }
     tools {
         jdk 'JDK17'
     }
