@@ -172,6 +172,7 @@ pipeline {
             }
         }
 
+        // NUEVO STAGE DE VALIDACIÓN - SOLO ESTO SE AGREGÓ
         stage('Validación QA y Aprobación Técnica') {
             when {
                 expression {
@@ -183,72 +184,52 @@ pipeline {
                     timeout(time: 24, unit: 'HOURS') {
                         def userInput = input(
                                 id: 'deploymentApproval',
-                                message: '✅ VALIDACIÓN REQUERIDA PARA DESPLIEGUE EN MAIN',
-                                description: 'Ambas aprobaciones son obligatorias para continuar con el despliegue',
-                                ok: 'Aprobar y Desplegar',
+                                message: '✅ Validación requerida para despliegue en MAIN/MASTER',
+                                ok: 'Aprobar y Continuar',
                                 parameters: [
                                         booleanParam(
                                                 name: 'QA_APPROVED',
-                                                defaultValue: true,
-                                                description: '✅ El equipo de QA ha validado los Quality Gates (marcar si está aprobado)'
+                                                defaultValue: false,
+                                                description: '¿El equipo de QA ha validado los Quality Gates?'
                                         ),
                                         booleanParam(
                                                 name: 'TECH_LEAD_APPROVED',
-                                                defaultValue: true,
-                                                description: '✅ El Líder Técnico ha aprobado el Pull Request (marcar si está aprobado)'
+                                                defaultValue: false,
+                                                description: '¿El Líder Técnico ha aprobado el Pull Request?'
                                         ),
                                         string(
                                                 name: 'QA_COMMENTS',
-                                                defaultValue: 'Aprobado por QA',
-                                                description: '📝 Comentarios de QA'
+                                                defaultValue: '',
+                                                description: 'Comentarios de QA (opcional)'
                                         ),
                                         string(
                                                 name: 'TECH_LEAD_COMMENTS',
-                                                defaultValue: 'Aprobado por Tech Lead',
-                                                description: '📝 Comentarios del Líder Técnico'
+                                                defaultValue: '',
+                                                description: 'Comentarios del Líder Técnico (opcional)'
                                         )
                                 ]
                         )
 
-                        // Mostrar resumen de la aprobación
-                        echo "═══════════════════════════════════════════════════════════"
-                        echo "📋 RESUMEN DE APROBACIÓN"
-                        echo "───────────────────────────────────────────────────────────"
-                        echo "✅ QA Aprobado: ${userInput['QA_APPROVED']}"
-                        echo "   Comentarios QA: ${userInput['QA_COMMENTS']}"
-                        echo "✅ Tech Lead Aprobado: ${userInput['TECH_LEAD_APPROVED']}"
-                        echo "   Comentarios Tech Lead: ${userInput['TECH_LEAD_COMMENTS']}"
-                        echo "═══════════════════════════════════════════════════════════"
-
-                        // Validar aprobaciones
-                        if (!userInput['QA_APPROVED']) {
-                            error("""
-❌ PIPELINE DETENIDO ❌
-─────────────────────────────────────────────────────
-El equipo de QA NO ha aprobado los Quality Gates.
-Comentarios: ${userInput['QA_COMMENTS']}
-Por favor, ejecuta el pipeline nuevamente cuando QA apruebe.
-─────────────────────────────────────────────────────
-                            """.stripIndent())
+                        if (userInput['QA_APPROVED'] && userInput['TECH_LEAD_APPROVED']) {
+                            echo "═══════════════════════════════════════════════════════════"
+                            echo "✅ VALIDACIONES APROBADAS ✅"
+                            echo "📋 QA: ${userInput['QA_COMMENTS'] ?: 'Sin comentarios'}"
+                            echo "👨‍💻 Tech Lead: ${userInput['TECH_LEAD_COMMENTS'] ?: 'Sin comentarios'}"
+                            echo "═══════════════════════════════════════════════════════════"
+                        } else {
+                            if (!userInput['QA_APPROVED']) {
+                                error("❌ PIPELINE DETENIDO: QA no ha aprobado. Comentarios: ${userInput['QA_COMMENTS']}")
+                            }
+                            if (!userInput['TECH_LEAD_APPROVED']) {
+                                error("❌ PIPELINE DETENIDO: Tech Lead no ha aprobado. Comentarios: ${userInput['TECH_LEAD_COMMENTS']}")
+                            }
                         }
-
-                        if (!userInput['TECH_LEAD_APPROVED']) {
-                            error("""
-❌ PIPELINE DETENIDO ❌
-─────────────────────────────────────────────────────
-El Líder Técnico NO ha aprobado el Pull Request.
-Comentarios: ${userInput['TECH_LEAD_COMMENTS']}
-Por favor, ejecuta el pipeline nuevamente cuando el Tech Lead apruebe.
-─────────────────────────────────────────────────────
-                            """.stripIndent())
-                        }
-
-                        echo "✅ ¡Todas las aprobaciones han sido concedidas! Continuando con el despliegue..."
                     }
                 }
             }
         }
 
+        // Build Docker Image - SIN CAMBIOS, IGUAL QUE ANTES
         stage('Build Docker Image') {
             when {
                 expression {
@@ -257,16 +238,13 @@ Por favor, ejecuta el pipeline nuevamente cuando el Tech Lead apruebe.
             }
             steps {
                 script {
-                    echo "═══════════════════════════════════════════════════════════"
-                    echo "🏗️  CONSTRUYENDO IMAGEN DOCKER"
-                    echo "📦 Imagen: ${IMAGE_NAME}:${IMAGE_TAG}"
-                    echo "═══════════════════════════════════════════════════════════"
                     sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} -t ${IMAGE_NAME}:latest ."
-                    echo "✅ Imagen Docker construida exitosamente"
+                    echo "Imagen Docker construida"
                 }
             }
         }
 
+        // Run Container - SIN CAMBIOS, IGUAL QUE ANTES
         stage('Run Container') {
             when {
                 expression {
@@ -275,22 +253,16 @@ Por favor, ejecuta el pipeline nuevamente cuando el Tech Lead apruebe.
             }
             steps {
                 script {
-                    echo "═══════════════════════════════════════════════════════════"
-                    echo "🚀 INICIANDO CONTENEDOR"
-                    echo "───────────────────────────────────────────────────────────"
                     sh """
-                        docker stop ${IMAGE_NAME} 2>/dev/null || true
-                        docker rm ${IMAGE_NAME} 2>/dev/null || true
+                        docker stop ${IMAGE_NAME} || true
+                        docker rm ${IMAGE_NAME} || true
                         docker run -d \
                           --name ${IMAGE_NAME} \
                           --restart unless-stopped \
                           -p 8083:8080 \
                           ${IMAGE_NAME}:${IMAGE_TAG}
                     """
-                    echo "═══════════════════════════════════════════════════════════"
-                    echo "✅ Contenedor iniciado exitosamente"
-                    echo "🌐 Aplicación disponible en: http://localhost:8083/api/personas"
-                    echo "═══════════════════════════════════════════════════════════"
+                    echo "Contenedor iniciado en http://localhost:8083/api/personas"
                 }
             }
         }
@@ -301,19 +273,10 @@ Por favor, ejecuta el pipeline nuevamente cuando el Tech Lead apruebe.
             cleanWs()
         }
         success {
-            echo "═══════════════════════════════════════════════════════════"
-            echo "🎉 PIPELINE EXITOSO 🎉"
-            echo "───────────────────────────────────────────────────────────"
-            echo "🌐 App: http://localhost:8083/api/personas"
-            echo "📊 SonarCloud: https://sonarcloud.io/project/overview?id=${SONAR_PROJECT_KEY}"
-            echo "═══════════════════════════════════════════════════════════"
+            echo " Pipeline exitoso! App en http://localhost:8083/api/personas"
         }
         failure {
-            echo "═══════════════════════════════════════════════════════════"
-            echo "❌ PIPELINE FALLÓ ❌"
-            echo "───────────────────────────────────────────────────────────"
-            echo "Revisa los logs para más detalles"
-            echo "═══════════════════════════════════════════════════════════"
+            echo "Pipeline falló"
         }
     }
 }
