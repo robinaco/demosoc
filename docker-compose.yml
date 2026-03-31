@@ -29,19 +29,39 @@ services:
   jenkins:
     image: jenkins/jenkins:lts-jdk17
     container_name: jenkins
+    user: root
     ports:
       - "8080:8080"
       - "50000:50000"
     volumes:
       - jenkins_home:/var/jenkins_home
-      - /var/run/docker.sock:/var/run/docker.sock
-    privileged: true
+    environment:
+      - DOCKER_HOST=tcp://docker-dind:2375
     networks:
       - devops-net
     restart: unless-stopped
+    depends_on:
+      - docker-dind
+
+  docker-dind:
+    image: docker:dind
+    container_name: docker-dind
+    privileged: true
+    ports:
+      - "2375:2375"
+    environment:
+      - DOCKER_TLS_CERTDIR=""
+    networks:
+      - devops-net
+    restart: unless-stopped
+    volumes:
+      - docker_data:/var/lib/docker
 
 volumes:
   jenkins_home:
+    external: true
+    name: demo_jenkins_home
+  docker_data:
 
 networks:
   devops-net:

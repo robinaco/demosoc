@@ -121,6 +121,9 @@ pipeline {
 
         IMAGE_NAME = 'mi-crud-app'
         IMAGE_TAG = "${env.BUILD_NUMBER}"
+
+        // Usar docker-dind
+        DOCKER_HOST = 'tcp://docker-dind:2375'
     }
 
     stages {
@@ -172,18 +175,31 @@ pipeline {
             }
         }
 
-        // SOLO AGREGAMOS ESTE STAGE - VALIDACIÓN MANUAL
         stage('Validación QA y Aprobación Técnica') {
             when {
-                branch 'main'
+                expression {
+                    env.GIT_BRANCH == 'origin/main' || env.GIT_BRANCH == 'origin/master'
+                }
             }
             steps {
-                input message: 'Aprobación requerida para desplegar en MAIN',
-                        ok: 'Aprobar',
-                        parameters: [
-                                booleanParam(name: 'QA_APPROVED', defaultValue: false, description: '¿QA aprobó los Quality Gates?'),
-                                booleanParam(name: 'TECH_LEAD_APPROVED', defaultValue: false, description: '¿El Tech Lead aprobó el PR?')
-                        ]
+                script {
+                    def userInput = input(
+                            message: '✅ Validación requerida para despliegue en MAIN/MASTER',
+                            ok: 'Aprobar y Continuar',
+                            parameters: [
+                                    booleanParam(name: 'QA_APPROVED', defaultValue: false, description: '¿El equipo de QA ha validado los Quality Gates?'),
+                                    booleanParam(name: 'TECH_LEAD_APPROVED', defaultValue: false, description: '¿El Líder Técnico ha aprobado el Pull Request?')
+                            ]
+                    )
+
+                    if (!userInput['QA_APPROVED']) {
+                        error("❌ Pipeline detenido: QA no aprobó los Quality Gates")
+                    }
+                    if (!userInput['TECH_LEAD_APPROVED']) {
+                        error("❌ Pipeline detenido: Tech Lead no aprobó el PR")
+                    }
+                    echo "✅ Validaciones aprobadas - Continuando con despliegue"
+                }
             }
         }
 
