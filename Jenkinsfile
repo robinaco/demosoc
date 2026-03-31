@@ -185,7 +185,7 @@ pipeline {
                   -p 8083:8080 \
                   ${IMAGE_NAME}:${IMAGE_TAG}
             """
-                    echo "✅ Contenedor iniciado en http://localhost:8083"
+                    echo "✅ Contenedor iniciado en http://localhost:8083/api/personas"
                 }
             }
         }
@@ -196,7 +196,7 @@ pipeline {
             cleanWs()
         }
         success {
-            echo " Pipeline exitoso! App en http://localhost:8081"
+            echo " Pipeline exitoso! App en http://localhost:8081/api/personas"
         }
         failure {
             echo "Pipeline falló"
