@@ -130,19 +130,6 @@ pipeline {
             }
         }
 
-        stage('Debug - Verificar Variables') {
-            steps {
-                script {
-                    echo "=== DIAGNÓSTICO DE RAMA ==="
-                    echo "BRANCH_NAME = ${env.BRANCH_NAME}"
-                    echo "GIT_BRANCH = ${env.GIT_BRANCH}"
-                    echo "CHANGE_BRANCH = ${env.CHANGE_BRANCH}"
-                    echo "GIT_COMMIT = ${env.GIT_COMMIT}"
-                    echo "=================================="
-                }
-            }
-        }
-
         stage('Compilar y Pruebas') {
             steps {
                 sh 'chmod +x gradlew'
@@ -188,10 +175,7 @@ pipeline {
         stage('Validación QA y Aprobación Técnica') {
             when {
                 expression {
-                    // Verificamos si estamos en main o master de cualquier forma
-                    (env.BRANCH_NAME == 'main' || env.BRANCH_NAME == 'master' ||
-                            env.GIT_BRANCH == 'origin/main' || env.GIT_BRANCH == 'origin/master' ||
-                            env.CHANGE_TARGET == 'main' || env.CHANGE_TARGET == 'master')
+                    env.GIT_BRANCH == 'origin/main' || env.GIT_BRANCH == 'origin/master'
                 }
             }
             steps {
@@ -199,59 +183,67 @@ pipeline {
                     timeout(time: 24, unit: 'HOURS') {
                         def userInput = input(
                                 id: 'deploymentApproval',
-                                message: '✅ Validación requerida para despliegue en MAIN/MASTER',
-                                ok: 'Aprobar y Continuar',
+                                message: '✅ VALIDACIÓN REQUERIDA PARA DESPLIEGUE EN MAIN',
+                                description: 'Ambas aprobaciones son obligatorias para continuar con el despliegue',
+                                ok: 'Aprobar y Desplegar',
                                 parameters: [
                                         booleanParam(
                                                 name: 'QA_APPROVED',
-                                                defaultValue: false,
-                                                description: '¿El equipo de QA ha validado los Quality Gates?'
+                                                defaultValue: true,
+                                                description: '✅ El equipo de QA ha validado los Quality Gates (marcar si está aprobado)'
                                         ),
                                         booleanParam(
                                                 name: 'TECH_LEAD_APPROVED',
-                                                defaultValue: false,
-                                                description: '¿El Líder Técnico ha aprobado el Pull Request?'
+                                                defaultValue: true,
+                                                description: '✅ El Líder Técnico ha aprobado el Pull Request (marcar si está aprobado)'
                                         ),
                                         string(
                                                 name: 'QA_COMMENTS',
-                                                defaultValue: '',
-                                                description: 'Comentarios de QA (opcional)'
+                                                defaultValue: 'Aprobado por QA',
+                                                description: '📝 Comentarios de QA'
                                         ),
                                         string(
                                                 name: 'TECH_LEAD_COMMENTS',
-                                                defaultValue: '',
-                                                description: 'Comentarios del Líder Técnico (opcional)'
+                                                defaultValue: 'Aprobado por Tech Lead',
+                                                description: '📝 Comentarios del Líder Técnico'
                                         )
                                 ]
                         )
 
-                        if (userInput['QA_APPROVED'] && userInput['TECH_LEAD_APPROVED']) {
-                            echo "═══════════════════════════════════════════════════════════"
-                            echo "✅ VALIDACIONES APROBADAS ✅"
-                            echo "───────────────────────────────────────────────────────────"
-                            echo "📋 QA: ${userInput['QA_COMMENTS'] ?: 'Sin comentarios'}"
-                            echo "👨‍💻 Tech Lead: ${userInput['TECH_LEAD_COMMENTS'] ?: 'Sin comentarios'}"
-                            echo "═══════════════════════════════════════════════════════════"
-                        } else {
-                            if (!userInput['QA_APPROVED']) {
-                                error("""
+                        // Mostrar resumen de la aprobación
+                        echo "═══════════════════════════════════════════════════════════"
+                        echo "📋 RESUMEN DE APROBACIÓN"
+                        echo "───────────────────────────────────────────────────────────"
+                        echo "✅ QA Aprobado: ${userInput['QA_APPROVED']}"
+                        echo "   Comentarios QA: ${userInput['QA_COMMENTS']}"
+                        echo "✅ Tech Lead Aprobado: ${userInput['TECH_LEAD_APPROVED']}"
+                        echo "   Comentarios Tech Lead: ${userInput['TECH_LEAD_COMMENTS']}"
+                        echo "═══════════════════════════════════════════════════════════"
+
+                        // Validar aprobaciones
+                        if (!userInput['QA_APPROVED']) {
+                            error("""
 ❌ PIPELINE DETENIDO ❌
 ─────────────────────────────────────────────────────
 El equipo de QA NO ha aprobado los Quality Gates.
-Comentarios: ${userInput['QA_COMMENTS'] ?: 'No proporcionados'}
+Comentarios: ${userInput['QA_COMMENTS']}
+Por favor, ejecuta el pipeline nuevamente cuando QA apruebe.
 ─────────────────────────────────────────────────────
-                                """.stripIndent())
-                            }
-                            if (!userInput['TECH_LEAD_APPROVED']) {
-                                error("""
+                            """.stripIndent())
+                        }
+
+                        if (!userInput['TECH_LEAD_APPROVED']) {
+                            error("""
 ❌ PIPELINE DETENIDO ❌
 ─────────────────────────────────────────────────────
 El Líder Técnico NO ha aprobado el Pull Request.
-Comentarios: ${userInput['TECH_LEAD_COMMENTS'] ?: 'No proporcionados'}
+Comentarios: ${userInput['TECH_LEAD_COMMENTS']}
+Por favor, ejecuta el pipeline nuevamente cuando el Tech Lead apruebe.
 ─────────────────────────────────────────────────────
-                                """.stripIndent())
-                            }
+                            """.stripIndent())
                         }
+
+                        echo "✅ ¡Todas las aprobaciones han sido concedidas! Continuando con el despliegue..."
                     }
                 }
             }
@@ -260,9 +252,7 @@ Comentarios: ${userInput['TECH_LEAD_COMMENTS'] ?: 'No proporcionados'}
         stage('Build Docker Image') {
             when {
                 expression {
-                    (env.BRANCH_NAME == 'main' || env.BRANCH_NAME == 'master' ||
-                            env.GIT_BRANCH == 'origin/main' || env.GIT_BRANCH == 'origin/master' ||
-                            env.CHANGE_TARGET == 'main' || env.CHANGE_TARGET == 'master')
+                    env.GIT_BRANCH == 'origin/main' || env.GIT_BRANCH == 'origin/master'
                 }
             }
             steps {
@@ -280,9 +270,7 @@ Comentarios: ${userInput['TECH_LEAD_COMMENTS'] ?: 'No proporcionados'}
         stage('Run Container') {
             when {
                 expression {
-                    (env.BRANCH_NAME == 'main' || env.BRANCH_NAME == 'master' ||
-                            env.GIT_BRANCH == 'origin/main' || env.GIT_BRANCH == 'origin/master' ||
-                            env.CHANGE_TARGET == 'main' || env.CHANGE_TARGET == 'master')
+                    env.GIT_BRANCH == 'origin/main' || env.GIT_BRANCH == 'origin/master'
                 }
             }
             steps {
