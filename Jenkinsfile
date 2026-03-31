@@ -196,7 +196,7 @@ pipeline {
             cleanWs()
         }
         success {
-            echo " Pipeline exitoso! App en http://localhost:8081/api/personas"
+            echo " Pipeline exitoso! App en http://localhost:8083/api/personas"
         }
         failure {
             echo "Pipeline falló"
