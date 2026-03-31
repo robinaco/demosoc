@@ -182,10 +182,10 @@ pipeline {
                 docker run -d \
                   --name ${IMAGE_NAME} \
                   --restart unless-stopped \
-                  -p 8083:8083 \
+                  -p 8081:8080 \
                   ${IMAGE_NAME}:${IMAGE_TAG}
             """
-                    echo "✅ Contenedor iniciado en http://localhost:8083"
+                    echo "✅ Contenedor iniciado en http://localhost:8081"
                 }
             }
         }
