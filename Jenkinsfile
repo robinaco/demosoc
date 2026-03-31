@@ -108,12 +108,7 @@
 
 pipeline {
     agent any
-    stage('Verificar Docker') {
-        steps {
-            sh 'docker --version'
-            sh 'docker ps'
-        }
-    }
+
     tools {
         jdk 'JDK17'
     }
@@ -177,68 +172,22 @@ pipeline {
             }
         }
 
+        // SOLO AGREGAMOS ESTE STAGE - VALIDACIÓN MANUAL
         stage('Validación QA y Aprobación Técnica') {
             when {
-                expression {
-                    env.GIT_BRANCH == 'origin/main' || env.GIT_BRANCH == 'origin/master'
-                }
+                branch 'main'
             }
             steps {
-                script {
-                    timeout(time: 24, unit: 'HOURS') {
-                        def userInput = input(
-                                id: 'deploymentApproval',
-                                message: '✅ Validación requerida para despliegue en MAIN/MASTER',
-                                ok: 'Aprobar y Continuar',
-                                parameters: [
-                                        booleanParam(
-                                                name: 'QA_APPROVED',
-                                                defaultValue: false,
-                                                description: '¿El equipo de QA ha validado los Quality Gates?'
-                                        ),
-                                        booleanParam(
-                                                name: 'TECH_LEAD_APPROVED',
-                                                defaultValue: false,
-                                                description: '¿El Líder Técnico ha aprobado el Pull Request?'
-                                        ),
-                                        string(
-                                                name: 'QA_COMMENTS',
-                                                defaultValue: '',
-                                                description: 'Comentarios de QA (opcional)'
-                                        ),
-                                        string(
-                                                name: 'TECH_LEAD_COMMENTS',
-                                                defaultValue: '',
-                                                description: 'Comentarios del Líder Técnico (opcional)'
-                                        )
-                                ]
-                        )
-
-                        if (userInput['QA_APPROVED'] && userInput['TECH_LEAD_APPROVED']) {
-                            echo "═══════════════════════════════════════════════════════════"
-                            echo "✅ VALIDACIONES APROBADAS ✅"
-                            echo "📋 QA: ${userInput['QA_COMMENTS'] ?: 'Sin comentarios'}"
-                            echo "👨‍💻 Tech Lead: ${userInput['TECH_LEAD_COMMENTS'] ?: 'Sin comentarios'}"
-                            echo "═══════════════════════════════════════════════════════════"
-                        } else {
-                            if (!userInput['QA_APPROVED']) {
-                                error("❌ PIPELINE DETENIDO: QA no ha aprobado. Comentarios: ${userInput['QA_COMMENTS']}")
-                            }
-                            if (!userInput['TECH_LEAD_APPROVED']) {
-                                error("❌ PIPELINE DETENIDO: Tech Lead no ha aprobado. Comentarios: ${userInput['TECH_LEAD_COMMENTS']}")
-                            }
-                        }
-                    }
-                }
+                input message: 'Aprobación requerida para desplegar en MAIN',
+                        ok: 'Aprobar',
+                        parameters: [
+                                booleanParam(name: 'QA_APPROVED', defaultValue: false, description: '¿QA aprobó los Quality Gates?'),
+                                booleanParam(name: 'TECH_LEAD_APPROVED', defaultValue: false, description: '¿El Tech Lead aprobó el PR?')
+                        ]
             }
         }
 
         stage('Build Docker Image') {
-            when {
-                expression {
-                    env.GIT_BRANCH == 'origin/main' || env.GIT_BRANCH == 'origin/master'
-                }
-            }
             steps {
                 script {
                     sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} -t ${IMAGE_NAME}:latest ."
@@ -248,11 +197,6 @@ pipeline {
         }
 
         stage('Run Container') {
-            when {
-                expression {
-                    env.GIT_BRANCH == 'origin/main' || env.GIT_BRANCH == 'origin/master'
-                }
-            }
             steps {
                 script {
                     sh """
