@@ -174,9 +174,8 @@ pipeline {
 
         stage('Validación QA y Aprobación Técnica') {
             when {
-                anyOf {
-                    branch 'main'
-                    branch 'master'
+                expression {
+                    env.BRANCH_NAME == 'main' || env.BRANCH_NAME == 'master'
                 }
             }
             steps {
@@ -212,15 +211,15 @@ pipeline {
 
                         if (userInput['QA_APPROVED'] && userInput['TECH_LEAD_APPROVED']) {
                             echo "═══════════════════════════════════════════════════════════"
-                            echo "✅ VALIDACIONES APROBADAS ✅"
+                            echo "VALIDACIONES APROBADAS"
                             echo "───────────────────────────────────────────────────────────"
-                            echo "📋 QA: ${userInput['QA_COMMENTS'] ?: 'Sin comentarios'}"
-                            echo "👨‍💻 Tech Lead: ${userInput['TECH_LEAD_COMMENTS'] ?: 'Sin comentarios'}"
+                            echo "QA: ${userInput['QA_COMMENTS'] ?: 'Sin comentarios'}"
+                            echo "Tech Lead: ${userInput['TECH_LEAD_COMMENTS'] ?: 'Sin comentarios'}"
                             echo "═══════════════════════════════════════════════════════════"
                         } else {
                             if (!userInput['QA_APPROVED']) {
                                 error("""
-PIPELINE DETENIDO
+ PIPELINE DETENIDO 
 ─────────────────────────────────────────────────────
 El equipo de QA NO ha aprobado los Quality Gates.
 Comentarios: ${userInput['QA_COMMENTS'] ?: 'No proporcionados'}
@@ -244,9 +243,8 @@ Comentarios: ${userInput['TECH_LEAD_COMMENTS'] ?: 'No proporcionados'}
 
         stage('Build Docker Image') {
             when {
-                anyOf {
-                    branch 'main'
-                    branch 'master'
+                expression {
+                    env.BRANCH_NAME == 'main' || env.BRANCH_NAME == 'master'
                 }
             }
             steps {
@@ -263,9 +261,8 @@ Comentarios: ${userInput['TECH_LEAD_COMMENTS'] ?: 'No proporcionados'}
 
         stage('Run Container') {
             when {
-                anyOf {
-                    branch 'main'
-                    branch 'master'
+                expression {
+                    env.BRANCH_NAME == 'main' || env.BRANCH_NAME == 'master'
                 }
             }
             steps {
