@@ -28,7 +28,7 @@ RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 # Copiar JAR desde builder
 COPY --from=builder /app/build/libs/*.jar app.jar
 
-# Cambiar a usuario no-roots
+# Cambiar a usuario no-root
 USER appuser
 
 
