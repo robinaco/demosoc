@@ -130,6 +130,19 @@ pipeline {
             }
         }
 
+        stage('Debug - Verificar Variables') {
+            steps {
+                script {
+                    echo "=== DIAGNÓSTICO DE RAMA ==="
+                    echo "BRANCH_NAME = ${env.BRANCH_NAME}"
+                    echo "GIT_BRANCH = ${env.GIT_BRANCH}"
+                    echo "CHANGE_BRANCH = ${env.CHANGE_BRANCH}"
+                    echo "GIT_COMMIT = ${env.GIT_COMMIT}"
+                    echo "=================================="
+                }
+            }
+        }
+
         stage('Compilar y Pruebas') {
             steps {
                 sh 'chmod +x gradlew'
@@ -175,7 +188,10 @@ pipeline {
         stage('Validación QA y Aprobación Técnica') {
             when {
                 expression {
-                    env.BRANCH_NAME == 'main' || env.BRANCH_NAME == 'master'
+                    // Verificamos si estamos en main o master de cualquier forma
+                    (env.BRANCH_NAME == 'main' || env.BRANCH_NAME == 'master' ||
+                            env.GIT_BRANCH == 'origin/main' || env.GIT_BRANCH == 'origin/master' ||
+                            env.CHANGE_TARGET == 'main' || env.CHANGE_TARGET == 'master')
                 }
             }
             steps {
@@ -211,15 +227,15 @@ pipeline {
 
                         if (userInput['QA_APPROVED'] && userInput['TECH_LEAD_APPROVED']) {
                             echo "═══════════════════════════════════════════════════════════"
-                            echo "VALIDACIONES APROBADAS"
+                            echo "✅ VALIDACIONES APROBADAS ✅"
                             echo "───────────────────────────────────────────────────────────"
-                            echo "QA: ${userInput['QA_COMMENTS'] ?: 'Sin comentarios'}"
-                            echo "Tech Lead: ${userInput['TECH_LEAD_COMMENTS'] ?: 'Sin comentarios'}"
+                            echo "📋 QA: ${userInput['QA_COMMENTS'] ?: 'Sin comentarios'}"
+                            echo "👨‍💻 Tech Lead: ${userInput['TECH_LEAD_COMMENTS'] ?: 'Sin comentarios'}"
                             echo "═══════════════════════════════════════════════════════════"
                         } else {
                             if (!userInput['QA_APPROVED']) {
                                 error("""
- PIPELINE DETENIDO 
+❌ PIPELINE DETENIDO ❌
 ─────────────────────────────────────────────────────
 El equipo de QA NO ha aprobado los Quality Gates.
 Comentarios: ${userInput['QA_COMMENTS'] ?: 'No proporcionados'}
@@ -228,7 +244,7 @@ Comentarios: ${userInput['QA_COMMENTS'] ?: 'No proporcionados'}
                             }
                             if (!userInput['TECH_LEAD_APPROVED']) {
                                 error("""
- PIPELINE DETENIDO 
+❌ PIPELINE DETENIDO ❌
 ─────────────────────────────────────────────────────
 El Líder Técnico NO ha aprobado el Pull Request.
 Comentarios: ${userInput['TECH_LEAD_COMMENTS'] ?: 'No proporcionados'}
@@ -244,17 +260,19 @@ Comentarios: ${userInput['TECH_LEAD_COMMENTS'] ?: 'No proporcionados'}
         stage('Build Docker Image') {
             when {
                 expression {
-                    env.BRANCH_NAME == 'main' || env.BRANCH_NAME == 'master'
+                    (env.BRANCH_NAME == 'main' || env.BRANCH_NAME == 'master' ||
+                            env.GIT_BRANCH == 'origin/main' || env.GIT_BRANCH == 'origin/master' ||
+                            env.CHANGE_TARGET == 'main' || env.CHANGE_TARGET == 'master')
                 }
             }
             steps {
                 script {
                     echo "═══════════════════════════════════════════════════════════"
-                    echo "CONSTRUYENDO IMAGEN DOCKER"
-                    echo "Imagen: ${IMAGE_NAME}:${IMAGE_TAG}"
+                    echo "🏗️  CONSTRUYENDO IMAGEN DOCKER"
+                    echo "📦 Imagen: ${IMAGE_NAME}:${IMAGE_TAG}"
                     echo "═══════════════════════════════════════════════════════════"
                     sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} -t ${IMAGE_NAME}:latest ."
-                    echo "Imagen Docker construida exitosamente"
+                    echo "✅ Imagen Docker construida exitosamente"
                 }
             }
         }
@@ -262,13 +280,15 @@ Comentarios: ${userInput['TECH_LEAD_COMMENTS'] ?: 'No proporcionados'}
         stage('Run Container') {
             when {
                 expression {
-                    env.BRANCH_NAME == 'main' || env.BRANCH_NAME == 'master'
+                    (env.BRANCH_NAME == 'main' || env.BRANCH_NAME == 'master' ||
+                            env.GIT_BRANCH == 'origin/main' || env.GIT_BRANCH == 'origin/master' ||
+                            env.CHANGE_TARGET == 'main' || env.CHANGE_TARGET == 'master')
                 }
             }
             steps {
                 script {
                     echo "═══════════════════════════════════════════════════════════"
-                    echo "INICIANDO CONTENEDOR"
+                    echo "🚀 INICIANDO CONTENEDOR"
                     echo "───────────────────────────────────────────────────────────"
                     sh """
                         docker stop ${IMAGE_NAME} 2>/dev/null || true
@@ -280,8 +300,8 @@ Comentarios: ${userInput['TECH_LEAD_COMMENTS'] ?: 'No proporcionados'}
                           ${IMAGE_NAME}:${IMAGE_TAG}
                     """
                     echo "═══════════════════════════════════════════════════════════"
-                    echo "Contenedor iniciado exitosamente"
-                    echo "Aplicación disponible en: http://localhost:8083/api/personas"
+                    echo "✅ Contenedor iniciado exitosamente"
+                    echo "🌐 Aplicación disponible en: http://localhost:8083/api/personas"
                     echo "═══════════════════════════════════════════════════════════"
                 }
             }
@@ -294,15 +314,15 @@ Comentarios: ${userInput['TECH_LEAD_COMMENTS'] ?: 'No proporcionados'}
         }
         success {
             echo "═══════════════════════════════════════════════════════════"
-            echo "PIPELINE EXITOSO"
+            echo "🎉 PIPELINE EXITOSO 🎉"
             echo "───────────────────────────────────────────────────────────"
-            echo "App: http://localhost:8083/api/personas"
-            echo "SonarCloud: https://sonarcloud.io/project/overview?id=${SONAR_PROJECT_KEY}"
+            echo "🌐 App: http://localhost:8083/api/personas"
+            echo "📊 SonarCloud: https://sonarcloud.io/project/overview?id=${SONAR_PROJECT_KEY}"
             echo "═══════════════════════════════════════════════════════════"
         }
         failure {
             echo "═══════════════════════════════════════════════════════════"
-            echo "PIPELINE FALLÓ"
+            echo "❌ PIPELINE FALLÓ ❌"
             echo "───────────────────────────────────────────────────────────"
             echo "Revisa los logs para más detalles"
             echo "═══════════════════════════════════════════════════════════"
