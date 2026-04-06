@@ -240,26 +240,14 @@ pipeline {
         stage('Análisis SonarCloud') {
             steps {
                 withSonarQubeEnv('SonarCloud') {
-                    script {
-                        def sonarParams = """
-                            -Dsonar.host.url=${SONAR_HOST_URL} \
-                            -Dsonar.organization=${SONAR_ORG} \
-                            -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                    sh """
+                        ./gradlew sonar --no-daemon \
+                            -Dsonar.host.url=https://sonarcloud.io \
+                            -Dsonar.organization=robinaco \
+                            -Dsonar.projectKey=robinaco_demosoc \
                             -Dsonar.token=${SONAR_TOKEN} \
                             -Dsonar.coverage.jacoco.xmlReportPaths=build/reports/jacoco/test/jacocoTestReport.xml
-                        """
-                        
-                        if (env.IS_PR == 'true') {
-                            sonarParams += """
-                                -Dsonar.pullrequest.key=${env.PR_NUMBER} \
-                                -Dsonar.pullrequest.branch=${env.CHANGE_BRANCH} \
-                                -Dsonar.pullrequest.base=${env.CHANGE_TARGET} \
-                                -Dsonar.pullrequest.provider=github
-                            """
-                        }
-                        
-                        sh "./gradlew sonar --no-daemon ${sonarParams}"
-                    }
+                    """
                 }
             }
         }
