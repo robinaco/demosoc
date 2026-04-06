@@ -64,6 +64,20 @@ pipeline {
         }
     }
 }
+stage('Debug Variables') {
+    steps {
+        script {
+            echo "=== DEBUG ==="
+            echo "CHANGE_ID: ${env.CHANGE_ID}"
+            echo "CHANGE_BRANCH: ${env.CHANGE_BRANCH}"
+            echo "CHANGE_TARGET: ${env.CHANGE_TARGET}"
+            echo "IS_PR: ${env.IS_PR}"
+            echo "PR_NUMBER: ${env.PR_NUMBER}"
+            echo "USE_LOCALSTACK: ${env.USE_LOCALSTACK}"
+            echo "============="
+        }
+    }
+}
 
         stage('Compilar y Pruebas') {
             steps {
@@ -111,7 +125,7 @@ pipeline {
                         if (env.IS_PR == 'true') {
                             comentarEnPR("Quality Gate Falló. Revisa: ${SONAR_HOST_URL}/dashboard?id=${SONAR_PROJECT_KEY}")
                         }
-                    }
+                    
                 }
             }
         }
