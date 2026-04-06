@@ -38,13 +38,17 @@ pipeline {
                 script {
                     env.IS_PR = env.CHANGE_ID != null ? 'true' : 'false'
                     env.PR_NUMBER = env.CHANGE_ID ?: ''
-                    env.USE_LOCALSTACK = env.IS_PR == 'true' ? 'true' : 'false'
-                    env.AWS_ENDPOINT_URL = env.IS_PR == 'true' ? 'http://host.docker.internal:4566' : ''
+                    
+                    // Detectar si estamos en Jenkins local (Docker)
+                    def isLocalJenkins = fileExists('/.dockerenv') || sh(script: 'hostname', returnStdout: true).contains('jenkins')
+                    
+                    // Usar LocalStack si es PR O si es Jenkins local
+                    env.USE_LOCALSTACK = (env.IS_PR == 'true' || isLocalJenkins) ? 'true' : 'false'
+                    env.AWS_ENDPOINT_URL = env.USE_LOCALSTACK == 'true' ? 'http://host.docker.internal:4566' : ''
+                    
                     echo "¿Es Pull Request? ${env.IS_PR}"
-                    if (env.IS_PR == 'true') {
-                        echo "PR #${env.PR_NUMBER} - Branch: ${env.CHANGE_BRANCH} → ${env.CHANGE_TARGET}"
-                        echo "Usando LocalStack: ${env.USE_LOCALSTACK}"
-                    }
+                    echo "¿Es Jenkins local? ${isLocalJenkins}"
+                    echo "Usando LocalStack: ${env.USE_LOCALSTACK}"
                 }
             }
         }
@@ -128,6 +132,7 @@ pipeline {
             when {
                 // expression { env.IS_PR == 'true' }
                  branch 'main'
+                 expression { env.USE_LOCALSTACK == 'true' }
             }
             steps {
                 script {
@@ -159,6 +164,7 @@ pipeline {
             when {
                 // expression { env.IS_PR == 'true' }
                 branch 'main'
+                expression { env.USE_LOCALSTACK == 'true' }
             }
             steps {
                 script {
