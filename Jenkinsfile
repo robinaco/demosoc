@@ -23,6 +23,7 @@ pipeline {
         // GitHub
         GITHUB_TOKEN = credentials('github-token')
         GITHUB_REPO = 'robinaco/demosoc'
+        USE_LOCALSTACK = 'true' 
     }
 
     stages {
@@ -125,7 +126,8 @@ pipeline {
 
         stage('Push to ECR') {
             when {
-                expression { env.IS_PR == 'true' }
+                // expression { env.IS_PR == 'true' }
+                 branch 'main'
             }
             steps {
                 script {
@@ -155,7 +157,8 @@ pipeline {
 
         stage('Deploy to ECS') {
             when {
-                expression { env.IS_PR == 'true' }
+                // expression { env.IS_PR == 'true' }
+                branch 'main'
             }
             steps {
                 script {
