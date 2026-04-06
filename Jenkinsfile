@@ -376,7 +376,6 @@ pipeline {
     }
 }
 
-// Función para comentar en GitHub PR
 def comentarEnPR(String mensaje) {
     script {
         def escapedBody = mensaje.replace('"', '\\"').replace('\n', '\\n')
