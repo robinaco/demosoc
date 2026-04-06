@@ -307,7 +307,7 @@ pipeline {
                         docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${DOCKER_IMAGE}
                         docker push ${DOCKER_IMAGE}
                     """
-                    echo "✅ Imagen subida a ECR: ${DOCKER_IMAGE}"
+                    echo "Imagen subida a ECR: ${DOCKER_IMAGE}"
                 }
             }
         }
@@ -346,11 +346,11 @@ pipeline {
                         
                         // Obtener URL del ALB
                         def app_url = sh(script: "terraform output -raw app_url", returnStdout: true).trim()
-                        echo "✅ App desplegada en: ${app_url}"
+                        echo "App desplegada en: ${app_url}"
                         
                         // Comentar en PR con la URL
                         comentarEnPR("""
-                            ✅ **Pipeline exitoso para PR #${env.PR_NUMBER}**
+                         **Pipeline exitoso para PR #${env.PR_NUMBER}**
                             
                             - **Quality Gate**: APROBADO
                             - **Imagen**: `${DOCKER_IMAGE}`
@@ -368,10 +368,10 @@ pipeline {
             cleanWs()
         }
         success {
-            echo "🎉 Pipeline exitoso!"
+            echo "Pipeline exitoso!"
         }
         failure {
-            echo "❌ Pipeline falló"
+            echo "Pipeline falló"
         }
     }
 }
@@ -386,6 +386,6 @@ def comentarEnPR(String mensaje) {
                 -H "Accept: application/vnd.github.v3+json" \
                 https://api.github.com/repos/${GITHUB_REPO}/issues/${env.PR_NUMBER}/comments \
                 -d '{"body": "${escapedBody}"}'
-        """ 2>/dev/null || echo "No se pudo comentar en PR"
+        """
     }
 }
