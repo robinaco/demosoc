@@ -32,4 +32,4 @@ variable "subnet_count" {
   description = "Número de subredes a crear"
   type        = number
   default     = 2
-}
+}# Comentario
