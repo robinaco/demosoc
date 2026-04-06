@@ -74,4 +74,7 @@ Thumbs.db
 # Env files (si los usas)
 ############################################
 .env
-.env.local
+.env.local.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.backup
