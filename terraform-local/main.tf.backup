@@ -1,0 +1,219 @@
+terraform {
+  required_version = ">= 1.0"
+  required_providers {
+    docker = {
+      source  = "kreuzwerker/docker"
+      version = "~> 3.0"
+    }
+  }
+}
+
+provider "docker" {
+  host = "unix:///var/run/docker.sock"
+}
+
+locals {
+  project_name = "mi-crud-app"
+  environment  = "local"
+}
+
+# Red principal
+resource "docker_network" "main" {
+  name = "${local.project_name}-network-${local.environment}"
+  driver = "bridge"
+  
+  ipam_config {
+    subnet = "172.20.0.0/16"
+    gateway = "172.20.0.1"
+  }
+}
+
+# Volumen para Jenkins
+resource "docker_volume" "jenkins_home" {
+  name = "${local.project_name}-jenkins-home-${local.environment}"
+}
+
+# Construir imagen de Jenkins
+resource "docker_image" "jenkins" {
+  name = "jenkins-local:latest"
+  build {
+    context = "../"
+    dockerfile = "../Dockerfile.jenkins"
+    tag = ["jenkins-local:latest"]
+  }
+  triggers = {
+    always_rebuild = timestamp()
+  }
+}
+
+# Construir imagen de tu aplicación
+resource "docker_image" "app" {
+  name = "mi-crud-app:latest"
+  build {
+    context = "../"
+    dockerfile = "../Dockerfile"
+    tag = ["mi-crud-app:latest"]
+  }
+  triggers = {
+    always_rebuild = timestamp()
+  }
+}
+
+# Contenedor de Jenkins
+resource "docker_container" "jenkins_task" {
+  name  = "${local.project_name}-jenkins-${local.environment}"
+  image = docker_image.jenkins.name
+  user  = "root"
+  
+  ports {
+    internal = 8080
+    external = 8080
+    protocol = "tcp"
+  }
+  
+  ports {
+    internal = 50000
+    external = 50000
+    protocol = "tcp"
+  }
+  
+  volumes {
+    volume_name    = docker_volume.jenkins_home.name
+    container_path = "/var/jenkins_home"
+  }
+  
+  volumes {
+    host_path      = "/var/run/docker.sock"
+    container_path = "/var/run/docker.sock"
+  }
+  
+  env = [
+    "DOCKER_HOST=unix:///var/run/docker.sock",
+    "JENKINS_OPTS=--prefix=/jenkins"
+  ]
+  
+  networks_advanced {
+    name = docker_network.main.name
+    aliases = ["jenkins-service"]
+  }
+  
+  restart = "unless-stopped"
+  depends_on = [docker_image.jenkins]
+}
+
+# Contenedor de tu aplicación
+resource "docker_container" "app_task" {
+  name  = "${local.project_name}-app-${local.environment}"
+  image = docker_image.app.name
+  
+  ports {
+    internal = 8080
+    external = 8083
+    protocol = "tcp"
+  }
+  
+  env = [
+    "SPRING_PROFILES_ACTIVE=local"
+  ]
+  
+  networks_advanced {
+    name = docker_network.main.name
+    aliases = ["app-service"]
+  }
+  
+  restart = "unless-stopped"
+  depends_on = [docker_image.app]
+}
+
+# Nginx para ALB
+resource "docker_image" "nginx" {
+  name = "nginx:alpine"
+  keep_locally = true
+}
+
+# Configuración de Nginx
+resource "local_file" "nginx_conf" {
+  filename = "${path.module}/nginx-alb.conf"
+  content = <<-EOT
+events {
+    worker_connections 1024;
+}
+
+http {
+    upstream jenkins_target_group {
+        server jenkins-service:8080;
+    }
+
+    upstream app_target_group {
+        server app-service:8080;
+    }
+
+    server {
+        listen 80;
+        server_name localhost;
+
+        location /health {
+            access_log off;
+            return 200 "healthy\\n";
+        }
+
+        location /jenkins/ {
+            proxy_pass http://jenkins_target_group/;
+            proxy_set_header Host \$host;
+            proxy_set_header X-Real-IP \$remote_addr;
+        }
+
+        location /api/ {
+            proxy_pass http://app_target_group/;
+            proxy_set_header Host \$host;
+            proxy_set_header X-Real-IP \$remote_addr;
+        }
+    }
+}
+EOT
+}
+
+# Contenedor del ALB
+resource "docker_container" "alb_simulator" {
+  name  = "${local.project_name}-alb-${local.environment}"
+  image = docker_image.nginx.name
+  
+  ports {
+    internal = 80
+    external = 80
+    protocol = "tcp"
+  }
+  
+  volumes {
+    container_path = "/etc/nginx/nginx.conf"
+    host_path      = local_file.nginx_conf.filename
+    read_only      = true
+  }
+  
+  networks_advanced {
+    name = docker_network.main.name
+    aliases = ["alb"]
+  }
+  
+  restart = "unless-stopped"
+  depends_on = [
+    docker_container.jenkins_task,
+    docker_container.app_task
+  ]
+}
+
+output "jenkins_url" {
+  value = "http://localhost:8080"
+}
+
+output "app_url" {
+  value = "http://localhost:8083/api/personas"
+}
+
+output "alb_url" {
+  value = "http://localhost"
+}
+
+output "get_jenkins_password" {
+  value = "docker exec ${docker_container.jenkins_task.name} cat /var/jenkins_home/secrets/initialAdminPassword"
+}
