@@ -109,7 +109,7 @@ pipeline {
                 failure {
                     script {
                         if (env.IS_PR == 'true') {
-                            comentarEnPR("❌ Quality Gate Falló. Revisa: ${SONAR_HOST_URL}/dashboard?id=${SONAR_PROJECT_KEY}")
+                            comentarEnPR("Quality Gate Falló. Revisa: ${SONAR_HOST_URL}/dashboard?id=${SONAR_PROJECT_KEY}")
                         }
                     }
                 }
