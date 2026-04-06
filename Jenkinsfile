@@ -21,7 +21,7 @@ pipeline {
         DOCKER_IMAGE = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:${IMAGE_TAG}"
         
         // GitHub
-        // GITHUB_TOKEN = credentials('github-token')
+        GITHUB_TOKEN = credentials('github-token')
         GITHUB_REPO = 'robinaco/demosoc'
     }
 
