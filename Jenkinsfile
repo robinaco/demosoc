@@ -23,7 +23,6 @@ pipeline {
         // GitHub
         GITHUB_TOKEN = credentials('github-token')
         GITHUB_REPO = 'robinaco/demosoc'
-        USE_LOCALSTACK = 'true' 
     }
 
     stages {
@@ -129,10 +128,11 @@ pipeline {
         }
 
         stage('Push to ECR') {
-            anyOf {
-                // expression { env.IS_PR == 'true' }
-                 branch 'main'
-                 expression { env.USE_LOCALSTACK == 'true' }
+            when {
+                anyOf {
+                    branch 'main'
+                    expression { env.USE_LOCALSTACK == 'true' }
+                }
             }
             steps {
                 script {
@@ -161,10 +161,11 @@ pipeline {
         }
 
         stage('Deploy to ECS') {
-            anyOf {
-                // expression { env.IS_PR == 'true' }
-                branch 'main'
-                expression { env.USE_LOCALSTACK == 'true' }
+            when {
+                anyOf {
+                    branch 'main'
+                    expression { env.USE_LOCALSTACK == 'true' }
+                }
             }
             steps {
                 script {
