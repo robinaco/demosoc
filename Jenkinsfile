@@ -129,7 +129,7 @@ pipeline {
         }
 
         stage('Push to ECR') {
-            when {
+            anyOf {
                 // expression { env.IS_PR == 'true' }
                  branch 'main'
                  expression { env.USE_LOCALSTACK == 'true' }
@@ -161,7 +161,7 @@ pipeline {
         }
 
         stage('Deploy to ECS') {
-            when {
+            anyOf {
                 // expression { env.IS_PR == 'true' }
                 branch 'main'
                 expression { env.USE_LOCALSTACK == 'true' }
