@@ -67,19 +67,26 @@ pipeline {
             env.IS_PR = env.CHANGE_ID ? 'true' : 'false'
             env.PR_NUMBER = env.CHANGE_ID ?: ''
 
-            // Detectar branch real (fallback cuando BRANCH_NAME viene null)
+            // Detectar branch real
             def detectedBranch = env.BRANCH_NAME
-            if (!detectedBranch?.trim()) {
+
+            if (!detectedBranch?.trim() || detectedBranch == 'HEAD') {
                 detectedBranch = sh(
-                    script: 'git rev-parse --abbrev-ref HEAD',
+                    script: "git branch -r --contains HEAD | grep origin/ | head -n 1 | sed 's|.*origin/||' | xargs",
                     returnStdout: true
                 ).trim()
             }
 
+            // Fallback final
+            if (!detectedBranch?.trim()) {
+                detectedBranch = 'unknown'
+            }
+
             env.DETECTED_BRANCH = detectedBranch
 
-            // Detectar si estamos en local o AWS
+            // Detectar si estamos dentro de Docker (Jenkins en contenedor)
             def isLocal = fileExists('/.dockerenv')
+            env.IS_LOCAL = isLocal ? 'true' : 'false'
 
             // Configuración según entorno
             if (env.DETECTED_BRANCH == 'main') {
@@ -92,7 +99,7 @@ pipeline {
                 env.DEPLOY_REAL = 'false'
             } else {
                 env.USE_LOCALSTACK = 'false'
-                env.ENVIRONMENT = env.DETECTED_BRANCH ?: 'unknown'
+                env.ENVIRONMENT = env.DETECTED_BRANCH
                 env.DEPLOY_REAL = 'false'
             }
 
@@ -105,6 +112,7 @@ pipeline {
             echo "================"
         }
     }
+}
 }
 
         stage('Compilar y Pruebas') {
@@ -144,78 +152,121 @@ pipeline {
             }
         }
 
-        stage('Build Docker Image') {
-            steps {
-                script {
-                    sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} -t ${IMAGE_NAME}:latest ."
-                    echo "magen construida: ${IMAGE_NAME}:${IMAGE_TAG}"
-                }
-            }
+        // stage('Build Docker Image') {
+        //     steps {
+        //         script {
+        //             sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} -t ${IMAGE_NAME}:latest ."
+        //             echo "magen construida: ${IMAGE_NAME}:${IMAGE_TAG}"
+        //         }
+        //     }
+        // }
+stage('Build Docker Image') {
+    steps {
+        script {
+            def shortCommit = sh(
+                script: 'git rev-parse --short HEAD',
+                returnStdout: true
+            ).trim()
+
+            env.IMAGE_TAG = "${env.BUILD_NUMBER}-${shortCommit}"
+
+            sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} -t ${IMAGE_NAME}:latest ."
+            echo "Imagen construida: ${IMAGE_NAME}:${IMAGE_TAG}"
         }
+    }
+}
+        // stage('Push to ECR') {
+        //     when {
+        //         anyOf {
+        //             branch('main')
+        //             expression { env.USE_LOCALSTACK == 'true' }
+        //         }
+        //     }
+        //     steps {
+        //         script {
+        //             if (env.USE_LOCALSTACK == 'true') {
+        //                 echo "LOCAL: Push a LocalStack ECR"
+        //                 sh """
+        //                     aws --endpoint-url=http://localhost:4566 ecr create-repository \
+        //                         --repository-name ${ECR_REPOSITORY} 2>/dev/null || true
+        //                     docker tag ${IMAGE_NAME}:${IMAGE_TAG} localhost:4566/${ECR_REPOSITORY}:${IMAGE_TAG}
+        //                     docker push localhost:4566/${ECR_REPOSITORY}:${IMAGE_TAG}
+        //                 """
+        //             } else if (env.DEPLOY_REAL == 'true') {
+        //                 echo "AWS: Push a ECR real"
+        //                 sh """
+        //                     aws ecr get-login-password --region ${AWS_REGION} | \
+        //                         docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+        //                     docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${DOCKER_IMAGE}
+        //                     docker push ${DOCKER_IMAGE}
+        //                 """
+        //             }
+        //             echo "Push completado"
+        //         }
+        //     }
+        // }
 
         stage('Push to ECR') {
-            when {
-                anyOf {
-                    branch('main')
-                    expression { env.USE_LOCALSTACK == 'true' }
-                }
-            }
-            steps {
-                script {
-                    if (env.USE_LOCALSTACK == 'true') {
-                        echo "LOCAL: Push a LocalStack ECR"
-                        sh """
-                            aws --endpoint-url=http://localhost:4566 ecr create-repository \
-                                --repository-name ${ECR_REPOSITORY} 2>/dev/null || true
-                            docker tag ${IMAGE_NAME}:${IMAGE_TAG} localhost:4566/${ECR_REPOSITORY}:${IMAGE_TAG}
-                            docker push localhost:4566/${ECR_REPOSITORY}:${IMAGE_TAG}
-                        """
-                    } else if (env.DEPLOY_REAL == 'true') {
-                        echo "AWS: Push a ECR real"
-                        sh """
-                            aws ecr get-login-password --region ${AWS_REGION} | \
-                                docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
-                            docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${DOCKER_IMAGE}
-                            docker push ${DOCKER_IMAGE}
-                        """
-                    }
-                    echo "Push completado"
-                }
-            }
+    when {
+        expression {
+            env.DETECTED_BRANCH == 'main' || env.USE_LOCALSTACK == 'true'
         }
+    }
+    steps {
+        script {
+            if (env.USE_LOCALSTACK == 'true') {
+                echo "LOCAL: Push a LocalStack ECR"
+                sh """
+                    aws --endpoint-url=http://localhost:4566 ecr create-repository \
+                        --repository-name ${ECR_REPOSITORY} 2>/dev/null || true
+                    docker tag ${IMAGE_NAME}:${IMAGE_TAG} localhost:4566/${ECR_REPOSITORY}:${IMAGE_TAG}
+                    docker push localhost:4566/${ECR_REPOSITORY}:${IMAGE_TAG}
+                """
+            } else if (env.DEPLOY_REAL == 'true') {
+                echo "AWS: Push a ECR real"
+                sh """
+                    aws ecr get-login-password --region ${AWS_REGION} | \
+                        docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+                    docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${DOCKER_IMAGE}
+                    docker push ${DOCKER_IMAGE}
+                """
+            }
+            echo "Push completado"
+        }
+    }
+}
 
         stage('Deploy to ECS') {
-            when {
-                anyOf {
-                    branch('main')
-                    expression { env.USE_LOCALSTACK == 'true' }
-                }
-            }
-            steps {
-                script {
-                    dir('terraform/ecs') {
-                        def tfVars = """
-                            app_image       = "${env.USE_LOCALSTACK == 'true' ? "localhost:4566/${ECR_REPOSITORY}:${IMAGE_TAG}" : DOCKER_IMAGE}"
-                            environment     = "${env.ENVIRONMENT}"
-                            pr_number       = "${env.PR_NUMBER}"
-                            aws_region      = "${AWS_REGION}"
-                            use_localstack  = ${env.USE_LOCALSTACK == 'true'}
-                            desired_count   = ${env.ENVIRONMENT == 'production' ? 2 : 1}
-                        """
-                        
-                        writeFile file: 'terraform.tfvars', text: tfVars
-                        
-                        sh """
-                            terraform init -reconfigure
-                            terraform plan
-                            terraform apply -auto-approve
-                        """
-                        
-                        echo "Deploy completado en ${env.USE_LOCALSTACK == 'true' ? 'LocalStack' : 'AWS'}"
-                    }
-                }
+    when {
+        expression {
+            env.DETECTED_BRANCH == 'main' || env.USE_LOCALSTACK == 'true'
+        }
+    }
+    steps {
+        script {
+            dir('terraform/ecs') {
+                def tfVars = """
+                    app_image       = "${env.USE_LOCALSTACK == 'true' ? "localhost:4566/${ECR_REPOSITORY}:${IMAGE_TAG}" : DOCKER_IMAGE}"
+                    environment     = "${env.ENVIRONMENT}"
+                    pr_number       = "${env.PR_NUMBER}"
+                    aws_region      = "${AWS_REGION}"
+                    use_localstack  = ${env.USE_LOCALSTACK == 'true'}
+                    desired_count   = ${env.ENVIRONMENT == 'production' ? 2 : 1}
+                """
+
+                writeFile file: 'terraform.tfvars', text: tfVars
+
+                sh """
+                    terraform init -reconfigure
+                    terraform plan
+                    terraform apply -auto-approve
+                """
+
+                echo "Deploy completado en ${env.USE_LOCALSTACK == 'true' ? 'LocalStack' : 'AWS'}"
             }
         }
+    }
+}
     }
 
     post {
