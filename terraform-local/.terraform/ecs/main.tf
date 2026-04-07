@@ -1,52 +1,28 @@
-terraform {
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
-    }
-  }
-}
+# Recursos principales de la infraestructura
+# - CloudWatch Log Group: almacena los logs de la aplicación
+# - ECS Cluster: grupo lógico de servicios ECS
+# - ECS Task Definition: define cómo ejecutar el contenedor (CPU, memoria, etc.)
+# - ECS Service: mantiene el número deseado de contenedores ejecutándose
 
-provider "aws" {
-  region = var.aws_region
-}
+# CloudWatch Log Group
+resource "aws_cloudwatch_log_group" "ecs" {
+  name = "/ecs/app-${var.environment}"
+  
+  retention_in_days = local.is_production ? 30 : 7
 
-# Obtener VPC por defecto
-data "aws_vpc" "default" {
-  default = true
-}
-
-data "aws_subnets" "default" {
-  filter {
-    name   = "vpc-id"
-    values = [data.aws_vpc.default.id]
-  }
-}
-
-# Security Group
-resource "aws_security_group" "app" {
-  name        = "sg-${var.environment}"
-  description = "Security group for ${var.environment}"
-  vpc_id      = data.aws_vpc.default.id
-
-  ingress {
-    from_port   = 8080
-    to_port     = 8080
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+  tags = local.common_tags
 }
 
 # ECS Cluster
 resource "aws_ecs_cluster" "main" {
   name = "cluster-${var.environment}"
+  
+  setting {
+    name  = "containerInsights"
+    value = local.is_production ? "enabled" : "disabled"
+  }
+
+  tags = local.common_tags
 }
 
 # ECS Task Definition
@@ -54,19 +30,31 @@ resource "aws_ecs_task_definition" "app" {
   family                   = "app-${var.environment}"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = 512
-  memory                   = 1024
+  cpu                      = local.task_config.cpu
+  memory                   = local.task_config.memory
   execution_role_arn       = aws_iam_role.ecs_execution.arn
+  task_role_arn           = aws_iam_role.ecs_task.arn
 
   container_definitions = jsonencode([{
     name  = "app"
     image = var.app_image
     portMappings = [{
-      containerPort = 8080
-      hostPort      = 8080
+      containerPort = var.container_port
+      hostPort      = var.container_port
       protocol      = "tcp"
     }]
+    environment = var.environment_vars
+    logConfiguration = {
+      logDriver = "awslogs"
+      options = {
+        "awslogs-group"         = aws_cloudwatch_log_group.ecs.name
+        "awslogs-region"        = var.aws_region
+        "awslogs-stream-prefix" = "ecs"
+      }
+    }
   }])
+
+  tags = local.common_tags
 }
 
 # ECS Service
@@ -74,7 +62,7 @@ resource "aws_ecs_service" "app" {
   name            = "service-${var.environment}"
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.app.arn
-  desired_count   = var.desired_count
+  desired_count   = var.desired_count != null ? var.desired_count : local.task_config.desired_count
   launch_type     = "FARGATE"
 
   network_configuration {
@@ -82,30 +70,16 @@ resource "aws_ecs_service" "app" {
     security_groups  = [aws_security_group.app.id]
     assign_public_ip = true
   }
-}
 
-# IAM Role
-resource "aws_iam_role" "ecs_execution" {
-  name = "ecs-execution-${var.environment}"
+  lifecycle {
+    ignore_changes = [
+      task_definition
+    ]
+  }
 
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Action = "sts:AssumeRole"
-      Effect = "Allow"
-      Principal = {
-        Service = "ecs-tasks.amazonaws.com"
-      }
-    }]
-  })
-}
+  depends_on = [
+    aws_iam_role_policy_attachment.ecs_execution_policy
+  ]
 
-resource "aws_iam_role_policy_attachment" "ecs_execution" {
-  role       = aws_iam_role.ecs_execution.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
-}
-
-# Outputs
-output "app_url" {
-  value = "ECS Service deployed - No ALB configured. Check AWS Console for IP."
+  tags = local.common_tags
 }

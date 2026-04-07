@@ -1,5 +1,3 @@
-
-
 pipeline {
     agent any
 
@@ -15,8 +13,8 @@ pipeline {
         SONAR_PROJECT_KEY = 'robinaco_demosoc'
 
         // AWS / ECR / ECS
-        AWS_ACCOUNT_ID = 'TU_CUENTA_AWS'        // Reemplaza con tu cuenta
-        AWS_REGION = 'us-east-1'                 // Reemplaza con tu región
+        AWS_ACCOUNT_ID = 'TU_CUENTA_AWS'
+        AWS_REGION = 'us-east-1'
         ECR_REPOSITORY = 'mi-crud-app'
         IMAGE_NAME = "${ECR_REPOSITORY}"
         IMAGE_TAG = "${env.BUILD_NUMBER}-${env.GIT_COMMIT?.substring(0,7) ?: 'local'}"
@@ -25,8 +23,6 @@ pipeline {
         // GitHub
         GITHUB_TOKEN = credentials('github-token')
         GITHUB_REPO = 'robinaco/demosoc'
-
-        
     }
 
     stages {
@@ -36,34 +32,24 @@ pipeline {
             }
         }
 
-        // stage('Detectar Contexto') {
-        //     steps {
-        //         script {
-        //             env.IS_PR = env.CHANGE_ID != null ? 'true' : 'false'
-        //             env.PR_NUMBER = env.CHANGE_ID ?: ''
-        //             echo "¿Es Pull Request? ${env.IS_PR}"
-        //             if (env.IS_PR == 'true') {
-        //                 echo "PR #${env.PR_NUMBER} - Branch: ${env.CHANGE_BRANCH} → ${env.CHANGE_TARGET}"
-        //             }
-        //         }
-        //     }
-        // }
         stage('Detectar Contexto') {
-    steps {
-        script {
-            env.IS_PR = env.CHANGE_ID != null ? 'true' : 'false'
-            env.PR_NUMBER = env.CHANGE_ID ?: ''
-            // Definir aquí las variables que dependen de IS_PR
-            env.USE_LOCALSTACK = env.IS_PR == 'true' ? 'true' : 'false'
-            env.AWS_ENDPOINT_URL = env.IS_PR == 'true' ? 'http://host.docker.internal:4566' : ''
-            echo "¿Es Pull Request? ${env.IS_PR}"
-            if (env.IS_PR == 'true') {
-                echo "PR #${env.PR_NUMBER} - Branch: ${env.CHANGE_BRANCH} → ${env.CHANGE_TARGET}"
-                echo "Usando LocalStack: ${env.USE_LOCALSTACK}"
+            steps {
+                script {
+                    env.IS_PR = env.CHANGE_ID != null ? 'true' : 'false'
+                    env.PR_NUMBER = env.CHANGE_ID ?: ''
+                    
+                    def isLocalJenkins = fileExists('/.dockerenv') || sh(script: 'hostname', returnStdout: true).contains('jenkins')
+                    env.USE_LOCALSTACK = (env.IS_PR == 'true' || isLocalJenkins) ? 'true' : 'false'
+                    env.ENVIRONMENT = env.IS_PR == 'true' ? "pr-${env.PR_NUMBER}" : 'production'
+                    
+                    echo "=== Contexto ==="
+                    echo "Pull Request: ${env.IS_PR}"
+                    echo "Ambiente: ${env.ENVIRONMENT}"
+                    echo "LocalStack: ${env.USE_LOCALSTACK}"
+                    echo "================"
+                }
             }
         }
-    }
-}
 
         stage('Compilar y Pruebas') {
             steps {
@@ -89,9 +75,9 @@ pipeline {
                 withSonarQubeEnv('SonarCloud') {
                     sh """
                         ./gradlew sonar --no-daemon \
-                            -Dsonar.host.url=https://sonarcloud.io \
-                            -Dsonar.organization=robinaco \
-                            -Dsonar.projectKey=robinaco_demosoc \
+                            -Dsonar.host.url=${SONAR_HOST_URL} \
+                            -Dsonar.organization=${SONAR_ORG} \
+                            -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
                             -Dsonar.token=${SONAR_TOKEN} \
                             -Dsonar.coverage.jacoco.xmlReportPaths=build/reports/jacoco/test/jacocoTestReport.xml
                     """
@@ -120,182 +106,90 @@ pipeline {
             steps {
                 script {
                     sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} -t ${IMAGE_NAME}:latest ."
-                    echo "Imagen Docker construida: ${IMAGE_NAME}:${IMAGE_TAG}"
+                    echo "✅ Imagen construida: ${IMAGE_NAME}:${IMAGE_TAG}"
                 }
             }
         }
-
-        // ============================================
-        // NUEVO: Push a ECR (reemplaza Deploy Local)
-        // ============================================
-        // stage('Push to ECR') {
-        //     when {
-        //         expression { env.IS_PR == 'true' }
-        //     }
-        //     steps {
-        //         script {
-        //             // Login a AWS ECR
-        //             sh """
-        //                 aws ecr get-login-password --region ${AWS_REGION} | \
-        //                     docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
-                        
-        //                 docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${DOCKER_IMAGE}
-        //                 docker push ${DOCKER_IMAGE}
-        //             """
-        //             echo "Imagen subida a ECR: ${DOCKER_IMAGE}"
-        //         }
-        //     }
-        // }
 
         stage('Push to ECR') {
-    when {
-        expression { env.IS_PR == 'true' }
-    }
-    steps {
-        script {
-            if (env.USE_LOCALSTACK == 'true') {
-                echo "📦 Usando LocalStack (simulación local)"
-                // Crear repositorio en LocalStack si no existe
-                sh """
-                    aws --endpoint-url=http://localhost:4566 ecr create-repository \
-                        --repository-name ${ECR_REPOSITORY} 2>/dev/null || true
-                """
-                // Taggear imagen para LocalStack
-                sh """
-                    docker tag ${IMAGE_NAME}:${IMAGE_TAG} localhost:4566/${ECR_REPOSITORY}:${IMAGE_TAG}
-                    docker push localhost:4566/${ECR_REPOSITORY}:${IMAGE_TAG}
-                """
-                echo "✅ Imagen subida a LocalStack ECR"
-            } else {
-                // AWS real
-                sh """
-                    aws ecr get-login-password --region ${AWS_REGION} | \
-                        docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
-                    docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${DOCKER_IMAGE}
-                    docker push ${DOCKER_IMAGE}
-                """
-                echo "Imagen subida a AWS ECR: ${DOCKER_IMAGE}"
-            }
-        }
-    }
-}
-
-        // ============================================
-        // NUEVO: Terraform Deploy a ECS
-        // ============================================
-        // stage('Deploy to ECS') {
-        //     when {
-        //         expression { env.IS_PR == 'true' }
-        //     }
-        //     steps {
-        //         script {
-        //             // Crear directorio para Terraform si no existe
-        //             sh "mkdir -p terraform/ecs"
-                    
-        //             // Crear archivos de Terraform
-        //             dir('terraform/ecs') {
-        //                 // Crear terraform.tfvars
-        //                 sh """
-        //                     cat > terraform.tfvars << 'EOF'
-        //                     app_image = "${DOCKER_IMAGE}"
-        //                     environment = "pr-${env.PR_NUMBER}"
-        //                     pr_number = "${env.PR_NUMBER}"
-        //                     desired_count = 1
-        //                     aws_region = "${AWS_REGION}"
-        //                     EOF
-        //                 """
-                        
-        //                 // Inicializar y aplicar Terraform
-        //                 sh """
-        //                     terraform init
-        //                     terraform plan
-        //                     terraform apply -auto-approve
-        //                 """
-                        
-        //                 // Obtener URL del ALB
-        //                 def app_url = sh(script: "terraform output -raw app_url", returnStdout: true).trim()
-        //                 echo "App desplegada en: ${app_url}"
-                        
-        //                 // Comentar en PR con la URL
-        //                 comentarEnPR("""
-        //                  **Pipeline exitoso para PR #${env.PR_NUMBER}**
-                            
-        //                     - **Quality Gate**: APROBADO
-        //                     - **Imagen**: `${DOCKER_IMAGE}`
-        //                     - **Ambiente**: pr-${env.PR_NUMBER}
-        //                     - **URL**: ${app_url}
-        //                 """)
-        //             }
-        //         }
-        //     }
-        // }
-        stage('Deploy to ECS') {
-    when {
-        expression { env.IS_PR == 'true' }
-    }
-    steps {
-        script {
-            sh "mkdir -p terraform/ecs"
-            dir('terraform/ecs') {
-                if (env.USE_LOCALSTACK == 'true') {
-                    // Configuración para LocalStack
-                    sh """
-                        cat > provider.tf << 'EOF'
-                        provider "aws" {
-                            region                      = "us-east-1"
-                            access_key                  = "test"
-                            secret_key                  = "test"
-                            skip_credentials_validation = true
-                            skip_metadata_api_check     = true
-                            skip_requesting_account_id  = true
-                            endpoints {
-                                ecs = "http://localhost:4566"
-                                ecr = "http://localhost:4566"
-                                iam = "http://localhost:4566"
-                            }
-                        }
-                        EOF
-                    """
+            when {
+                anyOf {
+                    branch('main')
+                    expression { env.USE_LOCALSTACK == 'true' }
                 }
-                
-                // Crear terraform.tfvars
-                sh """
-                    cat > terraform.tfvars << 'EOF'
-                    app_image = "${env.USE_LOCALSTACK == 'true' ? 'localhost:4566/' : ''}${ECR_REPOSITORY}:${IMAGE_TAG}"
-                    environment = "pr-${env.PR_NUMBER}"
-                    pr_number = "${env.PR_NUMBER}"
-                    desired_count = 1
-                    aws_region = "${AWS_REGION}"
-                    EOF
-                """
-                
-                // Inicializar y aplicar Terraform
-                sh """
-                    terraform init -reconfigure
-                    terraform plan
-                    terraform apply -auto-approve
-                """
-                
-                // Obtener URL (simulada para LocalStack)
-                def app_url = env.USE_LOCALSTACK == 'true' 
-                    ? "http://localhost:8083/api/personas (simulado con LocalStack)"
-                    : sh(script: "terraform output -raw app_url", returnStdout: true).trim()
-                
-                echo "App desplegada en: ${app_url}"
-                
-                comentarEnPR("""
-                 **Pipeline exitoso para PR #${env.PR_NUMBER}**
-                    
-                    - **Quality Gate**: APROBADO
-                    - **Imagen**: `${DOCKER_IMAGE}`
-                    - **Ambiente**: pr-${env.PR_NUMBER}
-                    - **URL**: ${app_url}
-                    - **Modo**: ${env.USE_LOCALSTACK == 'true' ? 'LocalStack (simulación)' : 'AWS Real'}
-                """)
+            }
+            steps {
+                script {
+                    if (env.USE_LOCALSTACK == 'true') {
+                        echo "📦 LOCAL: Simulando push a ECR"
+                        echo "✅ Simulación exitosa - ${IMAGE_NAME}:${IMAGE_TAG}"
+                    } else {
+                        echo "☁️ AWS: Push a ECR real"
+                        sh """
+                            aws ecr get-login-password --region ${AWS_REGION} | \
+                                docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+                            
+                            aws ecr describe-repositories --repository-names ${ECR_REPOSITORY} 2>/dev/null || \
+                                aws ecr create-repository --repository-name ${ECR_REPOSITORY}
+                            
+                            docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${DOCKER_IMAGE}
+                            docker push ${DOCKER_IMAGE}
+                        """
+                        echo "✅ Imagen subida: ${DOCKER_IMAGE}"
+                    }
+                }
             }
         }
-    }
-}
+
+        stage('Deploy to ECS') {
+            when {
+                anyOf {
+                    branch('main')
+                    expression { env.USE_LOCALSTACK == 'true' }
+                }
+            }
+            steps {
+                script {
+                    dir('terraform/ecs') {
+                        if (env.USE_LOCALSTACK == 'true') {
+                            echo "🚀 LOCAL: Simulando deploy en ECS"
+                            sh """
+                                cat > terraform.tfvars << EOF
+                                app_image     = "localhost:4566/${ECR_REPOSITORY}:${IMAGE_TAG}"
+                                environment   = "${env.ENVIRONMENT}"
+                                pr_number     = "${env.PR_NUMBER}"
+                                use_localstack = true
+                                EOF
+                            """
+                            sh """
+                                terraform init -reconfigure
+                                terraform plan
+                                terraform apply -auto-approve
+                            """
+                            echo "✅ Simulación completada"
+                        } else {
+                            echo "☁️ AWS: Desplegando en ECS"
+                            sh """
+                                cat > terraform.tfvars << EOF
+                                app_image     = "${DOCKER_IMAGE}"
+                                environment   = "${env.ENVIRONMENT}"
+                                pr_number     = "${env.PR_NUMBER}"
+                                use_localstack = false
+                                EOF
+                            """
+                            sh """
+                                terraform init -reconfigure
+                                terraform plan
+                                terraform apply -auto-approve
+                            """
+                            
+                            def output = sh(script: "terraform output -json", returnStdout: true).trim()
+                            echo "✅ Deploy completado: ${output}"
+                        }
+                    }
+                }
+            }
+        }
     }
 
     post {
@@ -303,10 +197,15 @@ pipeline {
             cleanWs()
         }
         success {
-            echo "Pipeline exitoso!"
+            echo "🎉 Pipeline exitoso para ${env.ENVIRONMENT}"
+            script {
+                if (env.IS_PR == 'true') {
+                    comentarEnPR("✅ Pipeline exitoso para PR #${env.PR_NUMBER}")
+                }
+            }
         }
         failure {
-            echo "Pipeline falló"
+            echo "❌ Pipeline falló para ${env.ENVIRONMENT}"
         }
     }
 }
