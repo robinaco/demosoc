@@ -52,9 +52,7 @@ RUN jenkins-plugin-cli --plugins \
     jacoco \
     junit
 
-# Volver al usuario jenkins (recomendado para Jenkins)
-USER jenkins
+USER root
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:8080/login || exit 1
