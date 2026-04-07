@@ -206,7 +206,7 @@ stage('Build Docker Image') {
         //     }
         // }
 
-        stage('Push to ECR') {
+  stage('Push to ECR') {
     when {
         expression {
             env.DETECTED_BRANCH == 'main' || env.USE_LOCALSTACK == 'true'
@@ -223,13 +223,19 @@ stage('Build Docker Image') {
                     docker push localhost:4566/${ECR_REPOSITORY}:${IMAGE_TAG}
                 """
             } else if (env.DEPLOY_REAL == 'true') {
-                echo "AWS: Push a ECR real"
-                sh """
-                    aws ecr get-login-password --region ${AWS_REGION} | \
+                withCredentials([[
+                    $class: 'AmazonWebServicesCredentialsBinding',
+                    credentialsId: 'aws-jenkins-creds'
+                ]]) {
+                    echo "AWS: Push a ECR real"
+                    sh '''
+                        aws ecr get-login-password --region ${AWS_REGION} | \
                         docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
-                    docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${DOCKER_IMAGE}
-                    docker push ${DOCKER_IMAGE}
-                """
+
+                        docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${DOCKER_IMAGE}
+                        docker push ${DOCKER_IMAGE}
+                    '''
+                }
             }
             echo "Push completado"
         }
