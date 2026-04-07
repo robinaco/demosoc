@@ -8,13 +8,12 @@ pipeline {
     environment {
         // SonarCloud
         SONAR_HOST_URL = 'https://sonarcloud.io'
-        SONAR_TOKEN = credentials('sonarcloud-token-robinaco')
+        SONAR_TOKEN = credentials('token_sonar_cloud')
         SONAR_ORG = 'robinaco'
         SONAR_PROJECT_KEY = 'robinaco_demosoc'
 
         // AWS / ECR / ECS
-        //AWS_ACCOUNT_ID = credentials('aws-account-id')
-        AWS_ACCOUNT_ID = 730335267909
+        AWS_ACCOUNT_ID = credentials('aws-account-id')
         AWS_REGION = 'us-east-1'
         ECR_REPOSITORY = 'mi-crud-app'
         IMAGE_NAME = "${ECR_REPOSITORY}"
