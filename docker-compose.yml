@@ -7,13 +7,14 @@ services:
       dockerfile: Dockerfile.jenkins
     image: jenkins-local:latest
     container_name: jenkins-local
+    user: root
     ports:
       - "8080:8080"
       - "50000:50000"
     volumes:
-      - jenkins_home:/var/jenkins_home    # Volumen persistente para conservar configuración
+      - jenkins_home:/var/jenkins_home    
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./jenkins-backup:/backup          # Opcional: backup de configuración
+      - ./jenkins-backup:/backup          
     environment:
       - DOCKER_HOST=unix:///var/run/docker.sock
       - JAVA_OPTS=-Djenkins.install.runSetupWizard=false
