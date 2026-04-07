@@ -13,7 +13,8 @@ pipeline {
         SONAR_PROJECT_KEY = 'robinaco_demosoc'
 
         // AWS / ECR / ECS
-        AWS_ACCOUNT_ID = credentials('aws-account-id')
+        //AWS_ACCOUNT_ID = credentials('aws-account-id')
+        AWS_ACCOUNT_ID = 730335267909
         AWS_REGION = 'us-east-1'
         ECR_REPOSITORY = 'mi-crud-app'
         IMAGE_NAME = "${ECR_REPOSITORY}"
