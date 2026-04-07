@@ -13,7 +13,7 @@ pipeline {
         SONAR_PROJECT_KEY = 'robinaco_demosoc'
 
         // AWS / ECR / ECS
-        AWS_ACCOUNT_ID = 'TU_CUENTA_AWS'
+        AWS_ACCOUNT_ID = credentials('aws-account-id')
         AWS_REGION = 'us-east-1'
         ECR_REPOSITORY = 'mi-crud-app'
         IMAGE_NAME = "${ECR_REPOSITORY}"
@@ -26,26 +26,36 @@ pipeline {
     }
 
     stages {
-        stage('Checkout') {
-            steps {
-                checkout scm
-            }
-        }
-
         stage('Detectar Contexto') {
             steps {
                 script {
                     env.IS_PR = env.CHANGE_ID != null ? 'true' : 'false'
                     env.PR_NUMBER = env.CHANGE_ID ?: ''
                     
-                    def isLocalJenkins = fileExists('/.dockerenv') || sh(script: 'hostname', returnStdout: true).contains('jenkins')
-                    env.USE_LOCALSTACK = (env.IS_PR == 'true' || isLocalJenkins) ? 'true' : 'false'
-                    env.ENVIRONMENT = env.IS_PR == 'true' ? "pr-${env.PR_NUMBER}" : 'production'
+                    // Detectar si estamos en local o AWS
+                    def isLocal = fileExists('/.dockerenv') || hostname.contains('jenkins')
+                    
+                    // Configuración según entorno
+                    if (env.BRANCH_NAME == 'main') {
+                        env.USE_LOCALSTACK = 'false'
+                        env.ENVIRONMENT = 'production'
+                        env.DEPLOY_REAL = 'true'
+                    } else if (isLocal && env.IS_PR == 'true') {
+                        env.USE_LOCALSTACK = 'true'
+                        env.ENVIRONMENT = "pr-${env.PR_NUMBER}"
+                        env.DEPLOY_REAL = 'false'
+                    } else {
+                        env.USE_LOCALSTACK = 'false'
+                        env.ENVIRONMENT = env.BRANCH_NAME ?: 'unknown'
+                        env.DEPLOY_REAL = 'false'
+                    }
                     
                     echo "=== Contexto ==="
-                    echo "Pull Request: ${env.IS_PR}"
+                    echo "Branch: ${env.BRANCH_NAME}"
+                    echo "PR: ${env.IS_PR}"
                     echo "Ambiente: ${env.ENVIRONMENT}"
                     echo "LocalStack: ${env.USE_LOCALSTACK}"
+                    echo "Deploy Real: ${env.DEPLOY_REAL}"
                     echo "================"
                 }
             }
@@ -61,12 +71,6 @@ pipeline {
                 success {
                     junit 'build/test-results/test/*.xml'
                 }
-            }
-        }
-
-        stage('Cobertura') {
-            steps {
-                sh './gradlew jacocoTestReport --no-daemon'
             }
         }
 
@@ -91,22 +95,13 @@ pipeline {
                     waitForQualityGate abortPipeline: true
                 }
             }
-            post {
-                failure {
-                    script {
-                        if (env.IS_PR == 'true') {
-                            comentarEnPR("❌ Quality Gate Falló. Revisa: ${SONAR_HOST_URL}/dashboard?id=${SONAR_PROJECT_KEY}")
-                        }
-                    }
-                }
-            }
         }
 
         stage('Build Docker Image') {
             steps {
                 script {
                     sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} -t ${IMAGE_NAME}:latest ."
-                    echo "✅ Imagen construida: ${IMAGE_NAME}:${IMAGE_TAG}"
+                    echo "magen construida: ${IMAGE_NAME}:${IMAGE_TAG}"
                 }
             }
         }
@@ -121,22 +116,23 @@ pipeline {
             steps {
                 script {
                     if (env.USE_LOCALSTACK == 'true') {
-                        echo "📦 LOCAL: Simulando push a ECR"
-                        echo "✅ Simulación exitosa - ${IMAGE_NAME}:${IMAGE_TAG}"
-                    } else {
-                        echo "☁️ AWS: Push a ECR real"
+                        echo "LOCAL: Push a LocalStack ECR"
+                        sh """
+                            aws --endpoint-url=http://localhost:4566 ecr create-repository \
+                                --repository-name ${ECR_REPOSITORY} 2>/dev/null || true
+                            docker tag ${IMAGE_NAME}:${IMAGE_TAG} localhost:4566/${ECR_REPOSITORY}:${IMAGE_TAG}
+                            docker push localhost:4566/${ECR_REPOSITORY}:${IMAGE_TAG}
+                        """
+                    } else if (env.DEPLOY_REAL == 'true') {
+                        echo "AWS: Push a ECR real"
                         sh """
                             aws ecr get-login-password --region ${AWS_REGION} | \
                                 docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
-                            
-                            aws ecr describe-repositories --repository-names ${ECR_REPOSITORY} 2>/dev/null || \
-                                aws ecr create-repository --repository-name ${ECR_REPOSITORY}
-                            
                             docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${DOCKER_IMAGE}
                             docker push ${DOCKER_IMAGE}
                         """
-                        echo "✅ Imagen subida: ${DOCKER_IMAGE}"
                     }
+                    echo "Push completado"
                 }
             }
         }
@@ -151,41 +147,25 @@ pipeline {
             steps {
                 script {
                     dir('terraform/ecs') {
-                        if (env.USE_LOCALSTACK == 'true') {
-                            echo "🚀 LOCAL: Simulando deploy en ECS"
-                            sh """
-                                cat > terraform.tfvars << EOF
-                                app_image     = "localhost:4566/${ECR_REPOSITORY}:${IMAGE_TAG}"
-                                environment   = "${env.ENVIRONMENT}"
-                                pr_number     = "${env.PR_NUMBER}"
-                                use_localstack = true
-                                EOF
-                            """
-                            sh """
-                                terraform init -reconfigure
-                                terraform plan
-                                terraform apply -auto-approve
-                            """
-                            echo "✅ Simulación completada"
-                        } else {
-                            echo "☁️ AWS: Desplegando en ECS"
-                            sh """
-                                cat > terraform.tfvars << EOF
-                                app_image     = "${DOCKER_IMAGE}"
-                                environment   = "${env.ENVIRONMENT}"
-                                pr_number     = "${env.PR_NUMBER}"
-                                use_localstack = false
-                                EOF
-                            """
-                            sh """
-                                terraform init -reconfigure
-                                terraform plan
-                                terraform apply -auto-approve
-                            """
-                            
-                            def output = sh(script: "terraform output -json", returnStdout: true).trim()
-                            echo "✅ Deploy completado: ${output}"
-                        }
+                        // Crear terraform.tfvars dinámico
+                        def tfVars = """
+                            app_image       = "${env.USE_LOCALSTACK == 'true' ? "localhost:4566/${ECR_REPOSITORY}:${IMAGE_TAG}" : DOCKER_IMAGE}"
+                            environment     = "${env.ENVIRONMENT}"
+                            pr_number       = "${env.PR_NUMBER}"
+                            aws_region      = "${AWS_REGION}"
+                            use_localstack  = ${env.USE_LOCALSTACK == 'true'}
+                            desired_count   = ${env.ENVIRONMENT == 'production' ? 2 : 1}
+                        """
+                        
+                        writeFile file: 'terraform.tfvars', text: tfVars
+                        
+                        sh """
+                            terraform init -reconfigure
+                            terraform plan
+                            terraform apply -auto-approve
+                        """
+                        
+                        echo "Deploy completado en ${env.USE_LOCALSTACK == 'true' ? 'LocalStack' : 'AWS'}"
                     }
                 }
             }
@@ -197,28 +177,10 @@ pipeline {
             cleanWs()
         }
         success {
-            echo "🎉 Pipeline exitoso para ${env.ENVIRONMENT}"
-            script {
-                if (env.IS_PR == 'true') {
-                    comentarEnPR("✅ Pipeline exitoso para PR #${env.PR_NUMBER}")
-                }
-            }
+            echo "Pipeline exitoso para ${env.ENVIRONMENT}"
         }
         failure {
-            echo "❌ Pipeline falló para ${env.ENVIRONMENT}"
+            echo "Pipeline falló"
         }
-    }
-}
-
-def comentarEnPR(String mensaje) {
-    script {
-        def escapedBody = mensaje.replace('"', '\\"').replace('\n', '\\n')
-        sh """
-            curl -X POST \
-                -H "Authorization: token ${GITHUB_TOKEN}" \
-                -H "Accept: application/vnd.github.v3+json" \
-                https://api.github.com/repos/${GITHUB_REPO}/issues/${env.PR_NUMBER}/comments \
-                -d '{"body": "${escapedBody}"}'
-        """
     }
 }
