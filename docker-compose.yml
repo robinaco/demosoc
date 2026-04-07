@@ -1,20 +1,42 @@
 version: '3.8'
 
 services:
-  jenkins:
+  jenkins-local:
     build:
       context: .
       dockerfile: Dockerfile.jenkins
-    container_name: jenkins
-    user: root
+    image: jenkins-local:latest
+    container_name: jenkins-local
     ports:
       - "8080:8080"
       - "50000:50000"
     volumes:
-      - jenkins_home:/var/jenkins_home
+      - jenkins_home:/var/jenkins_home    # Volumen persistente para conservar configuración
       - /var/run/docker.sock:/var/run/docker.sock
+      - ./jenkins-backup:/backup          # Opcional: backup de configuración
+    environment:
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - JAVA_OPTS=-Djenkins.install.runSetupWizard=false
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/login"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  localstack:
+    image: localstack/localstack:latest
+    container_name: localstack
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=ecr,ecs,iam,cloudwatch,logs
+      - DEFAULT_REGION=us-east-1
+      - ECR_SKIP_REGISTRY_CREATION=false
+    volumes:
+      - localstack_data:/var/lib/localstack
+      - /var/run/docker.sock:/var/run/docker.sock
 
 volumes:
   jenkins_home:
-
+  localstack_data:
