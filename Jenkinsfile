@@ -33,7 +33,8 @@ pipeline {
                     env.PR_NUMBER = env.CHANGE_ID ?: ''
                     
                     // Detectar si estamos en local o AWS
-                    def isLocal = fileExists('/.dockerenv') || hostname.contains('jenkins')
+                    //def isLocal = fileExists('/.dockerenv') || hostname.contains('jenkins')
+                    def isLocal = fileExists('/.dockerenv')
                     
                     // Configuración según entorno
                     if (env.BRANCH_NAME == 'main') {
@@ -148,7 +149,6 @@ pipeline {
             steps {
                 script {
                     dir('terraform/ecs') {
-                        // Crear terraform.tfvars dinámico
                         def tfVars = """
                             app_image       = "${env.USE_LOCALSTACK == 'true' ? "localhost:4566/${ECR_REPOSITORY}:${IMAGE_TAG}" : DOCKER_IMAGE}"
                             environment     = "${env.ENVIRONMENT}"
