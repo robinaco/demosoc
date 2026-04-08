@@ -8,7 +8,7 @@ import jakarta.annotation.PostConstruct;
 
 @SpringBootApplication
 public class SonarPocApplication {
-
+	private static final Logger log = LoggerFactory.getLogger(SonarPocApplication.class);
 	public static void main(String[] args) {
 		SpringApplication.run(SonarPocApplication.class, args);
 	
