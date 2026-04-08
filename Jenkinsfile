@@ -401,6 +401,7 @@ pipeline {
                 }
             }
         }
+        
 
         stage('Push to ECR') {
             when {
