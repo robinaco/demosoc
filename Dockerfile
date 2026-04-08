@@ -31,5 +31,5 @@ COPY --from=builder /app/build/libs/*.jar app.jar
 # Cambiar a usuario no-root
 USER appuser
 
-EXPOSE 8080
+EXPOSE 80
 ENTRYPOINT ["java", "-jar", "app.jar"]
