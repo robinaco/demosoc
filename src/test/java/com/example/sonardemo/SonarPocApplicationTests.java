@@ -27,4 +27,9 @@ class SonarPocApplicationTests {
 			context.close();
 		});
 	}
+
+	@Test
+	void testMain() {
+		SonarPocApplication.main(new String[]{});
+	}
 }
