@@ -9,6 +9,7 @@ public class SonarPocApplication {
 	public static void main(String[] args) {
 		SpringApplication.run(SonarPocApplication.class, args);
 		System.out.println("Hello, SonarQube!");
+		
 	}
 
 }
