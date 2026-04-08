@@ -70,7 +70,7 @@ RUN mkdir -p /app/temp && \
 COPY --from=builder /app/build/libs/*.jar app.jar
 
 # Cambiar a usuario no-root
-USER appuser
+# USER appuser
 
 # Configurar directorio temporal para Tomcat/Spring Boot
 ENV JAVA_OPTS="-Djava.io.tmpdir=/app/temp"
