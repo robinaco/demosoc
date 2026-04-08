@@ -11,13 +11,7 @@ public class SonarPocApplication {
 	private static final Logger log = LoggerFactory.getLogger(SonarPocApplication.class);
 	public static void main(String[] args) {
 		SpringApplication.run(SonarPocApplication.class, args);
-	
-
 	}
 
-	@PostConstruct
-    public void onStartup() {
-        log.info("Hello, SonarQube! - Application deployed to ECS!");
-    }
 
 }
