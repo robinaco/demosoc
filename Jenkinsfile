@@ -401,7 +401,7 @@ pipeline {
                 }
             }
         }
-        
+
 
         stage('Push to ECR') {
             when {
@@ -410,7 +410,7 @@ pipeline {
             steps {
                 withCredentials([
                       string(credentialsId: 'jenkins_access_key_id', variable: 'AWS_ACCESS_KEY_ID'),
-    string(credentialsId: 'jenkins_secret_access_key', variable: 'AWS_SECRET_ACCESS_KEY')
+                      string(credentialsId: 'jenkins_secret_access_key', variable: 'AWS_SECRET_ACCESS_KEY')
                 ]) {
                     sh '''
                         aws ecr get-login-password --region ${AWS_REGION} | \
@@ -428,10 +428,10 @@ pipeline {
                 expression { env.DETECTED_BRANCH == 'main' }
             }
             steps {
-                withCredentials([[
-                    $class: 'AmazonWebServicesCredentialsBinding',
-                    credentialsId: 'aws-jenkins-creds'
-                ]]) {
+                withCredentials([
+                      string(credentialsId: 'jenkins_access_key_id', variable: 'AWS_ACCESS_KEY_ID'),
+                      string(credentialsId: 'jenkins_secret_access_key', variable: 'AWS_SECRET_ACCESS_KEY')
+                ]) {
                     sh '''
                         set -euo pipefail
 
