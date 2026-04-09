@@ -8,9 +8,5 @@ public class PersonaDTO {
     private String nombre;
     private String email;
     private Integer edad;
-
-
-    public PersonaDTO() {
-
-    }
+    
 }
