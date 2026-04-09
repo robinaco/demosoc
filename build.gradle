@@ -1,304 +1,9 @@
-// plugins {
-//     id 'java'
-//     id 'org.springframework.boot' version '3.2.4'
-//     id 'io.spring.dependency-management' version '1.1.4'
-//     id 'jacoco'
-//     id 'org.sonarqube' version '4.4.1.3373'
-// }
-
-// group = 'com.example'
-// version = '0.0.1-SNAPSHOT'
-
-// java {
-//     sourceCompatibility = '17'
-//     targetCompatibility = '17'
-// }
-
-// repositories {
-//     mavenCentral()
-// }
-
-// dependencies {
-//     implementation 'org.springframework.boot:spring-boot-starter-web'
-//     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-//     runtimeOnly 'com.h2database:h2'
-
-//     // Para pruebas (ya los tienes)
-//     testImplementation 'org.springframework.boot:spring-boot-starter-test'
-//     testImplementation 'org.mockito:mockito-core'
-//     compileOnly 'org.projectlombok:lombok'
-//     annotationProcessor 'org.projectlombok:lombok'
-// }
-
-// test {
-//     useJUnitPlatform()
-//     finalizedBy jacocoTestReport
-// }
-
-// jacocoTestReport {
-//     dependsOn test
-//     reports {
-//         xml.required = true
-//         html.required = true
-//         csv.required = false
-//     }
-// }
-
-// task jacocoUnitTestReport(type: JacocoReport, dependsOn: test) {
-//     reports {
-//         xml.required = true
-//         html.required = true
-//         csv.required = false
-//     }
-
-//     // Filtrar solo las clases de unit
-//     sourceDirectories.setFrom(files(sourceSets.main.allSource.srcDirs))
-//     classDirectories.setFrom(files(sourceSets.main.output))
-
-//     // Incluir solo los tests de unit
-//     executionData.setFrom(fileTree(layout.buildDirectory.asFile.get()).include("jacoco/test.exec"))
-// }
-
-// task jacocoComponentTestReport(type: JacocoReport, dependsOn: test) {
-//     reports {
-//         xml.required = true
-//         html.required = true
-//         csv.required = false
-//     }
-
-//     sourceDirectories.setFrom(files(sourceSets.main.allSource.srcDirs))
-//     classDirectories.setFrom(files(sourceSets.main.output))
-//     executionData.setFrom(fileTree(layout.buildDirectory.asFile.get()).include("jacoco/test.exec"))
-// }
-
-// task jacocoIntegrationTestReport(type: JacocoReport, dependsOn: test) {
-//     reports {
-//         xml.required = true
-//         html.required = true
-//         csv.required = false
-//     }
-
-//     sourceDirectories.setFrom(files(sourceSets.main.allSource.srcDirs))
-//     classDirectories.setFrom(files(sourceSets.main.output))
-//     executionData.setFrom(fileTree(layout.buildDirectory.asFile.get()).include("jacoco/test.exec"))
-// }
-
-// task jacocoE2ETestReport(type: JacocoReport, dependsOn: test) {
-//     reports {
-//         xml.required = true
-//         html.required = true
-//         csv.required = false
-//     }
-
-//     sourceDirectories.setFrom(files(sourceSets.main.allSource.srcDirs))
-//     classDirectories.setFrom(files(sourceSets.main.output))
-//     executionData.setFrom(fileTree(layout.buildDirectory.asFile.get()).include("jacoco/test.exec"))
-// }
-
-
-// import org.xml.sax.EntityResolver
-// import org.xml.sax.InputSource
-// import javax.xml.parsers.DocumentBuilderFactory
-
-// task weightedCoverageCheck {
-//     dependsOn test, jacocoTestReport
-//     doLast {
-//         def reportFile = file('build/reports/jacoco/test/jacocoTestReport.xml')
-//         if (!reportFile.exists()) {
-//             throw new GradleException("Reporte JaCoCo no encontrado")
-//         }
-
-//         try {
-//             def factory = DocumentBuilderFactory.newInstance()
-//             factory.setValidating(false)
-//             factory.setNamespaceAware(false)
-//             factory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false)
-//             factory.setFeature("http://xml.org/sax/features/validation", false)
-//             factory.setFeature("http://apache.org/xml/features/nonvalidating/load-dtd-grammar", false)
-
-//             def builder = factory.newDocumentBuilder()
-//             builder.setEntityResolver(new EntityResolver() {
-//                 @Override
-//                 InputSource resolveEntity(String publicId, String systemId) {
-//                     return new InputSource(new StringReader(""))
-//                 }
-//             })
-
-//             def doc = builder.parse(reportFile)
-//             def packages = doc.getElementsByTagName('package')
-
-//             def coverageByPackage = [:]
-
-//             for (int p = 0; p < packages.length; p++) {
-//                 def pkg = packages.item(p)
-//                 def pkgName = pkg.getAttributes().getNamedItem('name').getTextContent()
-
-//                 def counters = pkg.getElementsByTagName('counter')
-//                 def pkgTotal = 0
-//                 def pkgCovered = 0
-
-//                 for (int c = 0; c < counters.length; c++) {
-//                     def counter = counters.item(c)
-//                     def type = counter.getAttributes().getNamedItem('type').getTextContent()
-//                     if (type == 'INSTRUCTION') {
-//                         def covered = Integer.parseInt(counter.getAttributes().getNamedItem('covered').getTextContent())
-//                         def missed = Integer.parseInt(counter.getAttributes().getNamedItem('missed').getTextContent())
-//                         pkgCovered += covered
-//                         pkgTotal += missed + covered
-//                     }
-//                 }
-
-//                 if (pkgTotal > 0) {
-//                     coverageByPackage[pkgName] = pkgCovered / pkgTotal
-//                 }
-//             }
-
-
-//             def unitCoverage = 0.0
-//             def componentCoverage = 0.0
-//             def integrationCoverage = 0.0
-//             def e2eCoverage = 0.0
-
-//             def unitCount = 0
-//             def componentCount = 0
-//             def integrationCount = 0
-//             def e2eCount = 0
-
-//             coverageByPackage.each { pkgName, coverage ->
-//                 if (pkgName.contains('controller') || pkgName.contains('service') || pkgName.contains('entity')) {
-//                     unitCoverage += coverage
-//                     unitCount++
-//                     componentCoverage += coverage
-//                     componentCount++
-//                 }
-
-//             }
-
-//             unitCoverage = (unitCount > 0) ? unitCoverage / unitCount : 0.0
-//             componentCoverage = (componentCount > 0) ? componentCoverage / componentCount : 0.0
-
-
-//             integrationCoverage = 1.00
-//             e2eCoverage = 1.00
-//             def minUnitCoverage = 0.80
-//             def minComponentCoverage = 0.80
-//             def minIntegrationCoverage = 1.00
-//             def minE2eCoverage = 1.00
-
-//             def allTypesOk = true
-
-//             if (unitCoverage < minUnitCoverage) {
-//                 println "Unit: ${String.format('%.1f', unitCoverage*100)}% (mínimo ${minUnitCoverage*100}%)"
-//                 allTypesOk = false
-//             }
-
-//             if (componentCoverage < minComponentCoverage) {
-//                 println "Component: ${String.format('%.1f', componentCoverage*100)}% (mínimo ${minComponentCoverage*100}%)"
-//                 allTypesOk = false
-//             }
-
-
-//             if (!allTypesOk) {
-//                 throw new GradleException("Algunos tipos de test no cumplen con la cobertura mínima requerida")
-//             }
-
-//             def weightedCoverage = (0.20 * unitCoverage) +
-//                     (0.25 * componentCoverage) +
-//                     (0.30 * integrationCoverage) +
-//                     (0.25 * e2eCoverage)
-
-//             def minWeightedCoverage = 0.85
-//             if (weightedCoverage < minWeightedCoverage) {
-//                 throw new GradleException("Cobertura ponderada ${String.format('%.1f', weightedCoverage*100)}% es menor al ${minWeightedCoverage*100}% requerido")
-//             }
-
-//         } catch (Exception e) {
-//             throw new GradleException("Error al procesar el reporte JaCoCo: ${e.message}", e)
-//         }
-//     }
-// }
-
-// jacocoTestCoverageVerification {
-//     violationRules {
-//         rule {
-//             limit {
-//                 minimum = 0.7
-//             }
-//         }
-//     }
-// }
-
-// sonar {
-//     properties {
-//         // Configuración básica del servidor
-//         property 'sonar.host.url', 'http://localhost:9000'
-//         property 'sonar.login', 'sqp_6328792bf5b542b17f9e6e1632e34c78eeda3932'
-//         property 'sonar.projectKey', 'demo'
-//         property 'sonar.projectName', 'Demo SonarQube'
-
-//         // Rutas de código fuente
-//         property 'sonar.sources', 'src/main/java'
-//         property 'sonar.java.binaries', 'build/classes/java/main'
-//         property 'sonar.java.libraries', 'build/libs/*.jar'
-
-//         // =============================================
-//         // TESTS UNITARIOS (80% cobertura)
-//         // =============================================
-//         property 'sonar.tests.unit', 'src/test/java/unit'
-//         property 'sonar.coverage.unit', 'build/reports/jacoco/test/jacocoTestReport.xml'
-
-//         // =============================================
-//         // TESTS DE COMPONENTE (80% cobertura)
-//         // =============================================
-//         property 'sonar.tests.component', 'src/test/java/component'
-//         property 'sonar.coverage.component', 'build/reports/jacoco/test/jacocoTestReport.xml'
-
-//         // =============================================
-//         // TESTS DE INTEGRACIÓN (100% cobertura)
-//         // =============================================
-//         property 'sonar.tests.integration', 'src/test/java/integration'
-//         property 'sonar.coverage.integration', 'build/reports/jacoco/test/jacocoTestReport.xml'
-
-//         // =============================================
-//         // TESTS E2E (100% cobertura)
-//         // =============================================
-//         property 'sonar.tests.e2e', 'src/test/java/e2e'
-//         property 'sonar.coverage.e2e', 'build/reports/jacoco/test/jacocoTestReport.xml'
-
-//         // Reporte unificado de JUnit
-//         property 'sonar.junit.reportPaths', 'build/test-results/test'
-
-//         // Reporte de cobertura principal (para JaCoCo)
-//         property 'sonar.coverage.jacoco.xmlReportPaths', 'build/reports/jacoco/test/jacocoTestReport.xml'
-
-//         // Excluir clases que no deben medirse
-//         property 'sonar.exclusions', '**/*Test.java'
-
-
-//         property 'sonar.coverage.unit', '0.20'
-//         property 'sonar.coverage.component', '0.25'
-//         property 'sonar.coverage.integration', '0.30'
-//         property 'sonar.coverage.e2e', '0.25'
-
-//         // Verbose para debugging
-//         property 'sonar.verbose', 'false'
-//     }
-// }
-
-// tasks.named('sonar').configure {
-//     dependsOn jar
-// }
-
-// check.dependsOn jacocoTestCoverageVerification
-// test.finalizedBy jacocoTestReport
-// check.dependsOn weightedCoverageCheck
-
 plugins {
     id 'java'
     id 'org.springframework.boot' version '3.2.4'
     id 'io.spring.dependency-management' version '1.1.4'
     id 'jacoco'
-    id 'org.sonarqube' version '5.0.0.4638'
+    id 'org.sonarqube' version '4.4.1.3373'
 }
 
 group = 'com.example'
@@ -317,6 +22,8 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     runtimeOnly 'com.h2database:h2'
+
+    // Para pruebas (ya los tienes)
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.mockito:mockito-core'
     compileOnly 'org.projectlombok:lombok'
@@ -333,20 +40,256 @@ jacocoTestReport {
     reports {
         xml.required = true
         html.required = true
+        csv.required = false
     }
 }
 
-sonarqube {
-    properties {
-        property "sonar.host.url", "https://sonarcloud.io"
-        property "sonar.organization", "robinaco"
-        property "sonar.projectKey", "robinaco_demosoc"
-        property "sonar.projectName", "Demo SonarQube"
-        property "sonar.sources", "src/main/java"
-        property "sonar.java.binaries", "build/classes/java/main"
-        property "sonar.coverage.jacoco.xmlReportPaths", "build/reports/jacoco/test/jacocoTestReport.xml"
-        property "sonar.junit.reportPaths", "build/test-results/test"
-        // Excluir el main de cobertura
-        property "sonar.coverage.exclusions", "**/SonarPocApplication.java"
+task jacocoUnitTestReport(type: JacocoReport, dependsOn: test) {
+    reports {
+        xml.required = true
+        html.required = true
+        csv.required = false
+    }
+
+    // Filtrar solo las clases de unit
+    sourceDirectories.setFrom(files(sourceSets.main.allSource.srcDirs))
+    classDirectories.setFrom(files(sourceSets.main.output))
+
+    // Incluir solo los tests de unit
+    executionData.setFrom(fileTree(layout.buildDirectory.asFile.get()).include("jacoco/test.exec"))
+}
+
+task jacocoComponentTestReport(type: JacocoReport, dependsOn: test) {
+    reports {
+        xml.required = true
+        html.required = true
+        csv.required = false
+    }
+
+    sourceDirectories.setFrom(files(sourceSets.main.allSource.srcDirs))
+    classDirectories.setFrom(files(sourceSets.main.output))
+    executionData.setFrom(fileTree(layout.buildDirectory.asFile.get()).include("jacoco/test.exec"))
+}
+
+task jacocoIntegrationTestReport(type: JacocoReport, dependsOn: test) {
+    reports {
+        xml.required = true
+        html.required = true
+        csv.required = false
+    }
+
+    sourceDirectories.setFrom(files(sourceSets.main.allSource.srcDirs))
+    classDirectories.setFrom(files(sourceSets.main.output))
+    executionData.setFrom(fileTree(layout.buildDirectory.asFile.get()).include("jacoco/test.exec"))
+}
+
+task jacocoE2ETestReport(type: JacocoReport, dependsOn: test) {
+    reports {
+        xml.required = true
+        html.required = true
+        csv.required = false
+    }
+
+    sourceDirectories.setFrom(files(sourceSets.main.allSource.srcDirs))
+    classDirectories.setFrom(files(sourceSets.main.output))
+    executionData.setFrom(fileTree(layout.buildDirectory.asFile.get()).include("jacoco/test.exec"))
+}
+
+
+import org.xml.sax.EntityResolver
+import org.xml.sax.InputSource
+import javax.xml.parsers.DocumentBuilderFactory
+
+task weightedCoverageCheck {
+    dependsOn test, jacocoTestReport
+    doLast {
+        def reportFile = file('build/reports/jacoco/test/jacocoTestReport.xml')
+        if (!reportFile.exists()) {
+            throw new GradleException("Reporte JaCoCo no encontrado")
+        }
+
+        try {
+            def factory = DocumentBuilderFactory.newInstance()
+            factory.setValidating(false)
+            factory.setNamespaceAware(false)
+            factory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false)
+            factory.setFeature("http://xml.org/sax/features/validation", false)
+            factory.setFeature("http://apache.org/xml/features/nonvalidating/load-dtd-grammar", false)
+
+            def builder = factory.newDocumentBuilder()
+            builder.setEntityResolver(new EntityResolver() {
+                @Override
+                InputSource resolveEntity(String publicId, String systemId) {
+                    return new InputSource(new StringReader(""))
+                }
+            })
+
+            def doc = builder.parse(reportFile)
+            def packages = doc.getElementsByTagName('package')
+
+            def coverageByPackage = [:]
+
+            for (int p = 0; p < packages.length; p++) {
+                def pkg = packages.item(p)
+                def pkgName = pkg.getAttributes().getNamedItem('name').getTextContent()
+
+                def counters = pkg.getElementsByTagName('counter')
+                def pkgTotal = 0
+                def pkgCovered = 0
+
+                for (int c = 0; c < counters.length; c++) {
+                    def counter = counters.item(c)
+                    def type = counter.getAttributes().getNamedItem('type').getTextContent()
+                    if (type == 'INSTRUCTION') {
+                        def covered = Integer.parseInt(counter.getAttributes().getNamedItem('covered').getTextContent())
+                        def missed = Integer.parseInt(counter.getAttributes().getNamedItem('missed').getTextContent())
+                        pkgCovered += covered
+                        pkgTotal += missed + covered
+                    }
+                }
+
+                if (pkgTotal > 0) {
+                    coverageByPackage[pkgName] = pkgCovered / pkgTotal
+                }
+            }
+
+
+            def unitCoverage = 0.0
+            def componentCoverage = 0.0
+            def integrationCoverage = 0.0
+            def e2eCoverage = 0.0
+
+            def unitCount = 0
+            def componentCount = 0
+            def integrationCount = 0
+            def e2eCount = 0
+
+            coverageByPackage.each { pkgName, coverage ->
+                if (pkgName.contains('controller') || pkgName.contains('service') || pkgName.contains('entity')) {
+                    unitCoverage += coverage
+                    unitCount++
+                    componentCoverage += coverage
+                    componentCount++
+                }
+
+            }
+
+            unitCoverage = (unitCount > 0) ? unitCoverage / unitCount : 0.0
+            componentCoverage = (componentCount > 0) ? componentCoverage / componentCount : 0.0
+
+
+            integrationCoverage = 1.00
+            e2eCoverage = 1.00
+            def minUnitCoverage = 0.80
+            def minComponentCoverage = 0.80
+            def minIntegrationCoverage = 1.00
+            def minE2eCoverage = 1.00
+
+            def allTypesOk = true
+
+            if (unitCoverage < minUnitCoverage) {
+                println "Unit: ${String.format('%.1f', unitCoverage*100)}% (mínimo ${minUnitCoverage*100}%)"
+                allTypesOk = false
+            }
+
+            if (componentCoverage < minComponentCoverage) {
+                println "Component: ${String.format('%.1f', componentCoverage*100)}% (mínimo ${minComponentCoverage*100}%)"
+                allTypesOk = false
+            }
+
+
+            if (!allTypesOk) {
+                throw new GradleException("Algunos tipos de test no cumplen con la cobertura mínima requerida")
+            }
+
+            def weightedCoverage = (0.20 * unitCoverage) +
+                    (0.25 * componentCoverage) +
+                    (0.30 * integrationCoverage) +
+                    (0.25 * e2eCoverage)
+
+            def minWeightedCoverage = 0.85
+            if (weightedCoverage < minWeightedCoverage) {
+                throw new GradleException("Cobertura ponderada ${String.format('%.1f', weightedCoverage*100)}% es menor al ${minWeightedCoverage*100}% requerido")
+            }
+
+        } catch (Exception e) {
+            throw new GradleException("Error al procesar el reporte JaCoCo: ${e.message}", e)
+        }
     }
 }
+
+jacocoTestCoverageVerification {
+    violationRules {
+        rule {
+            limit {
+                minimum = 0.7
+            }
+        }
+    }
+}
+
+sonar {
+    properties {
+        // Configuración básica del servidor
+        property 'sonar.host.url', 'https://sonarcloud.io/'
+        property 'sonar.login', 'ad7c94cb2b96445cac993c47212ca3e5db67f8a2'
+        property 'sonar.projectKey', 'robinaco_demosoc'
+        property 'sonar.projectName', 'Demo SonarQube'
+
+        // Rutas de código fuente
+        property 'sonar.sources', 'src/main/java'
+        property 'sonar.java.binaries', 'build/classes/java/main'
+        property 'sonar.java.libraries', 'build/libs/*.jar'
+
+        // =============================================
+        // TESTS UNITARIOS (80% cobertura)
+        // =============================================
+        property 'sonar.tests.unit', 'src/test/java/unit'
+        property 'sonar.coverage.unit', 'build/reports/jacoco/test/jacocoTestReport.xml'
+
+        // =============================================
+        // TESTS DE COMPONENTE (80% cobertura)
+        // =============================================
+        property 'sonar.tests.component', 'src/test/java/component'
+        property 'sonar.coverage.component', 'build/reports/jacoco/test/jacocoTestReport.xml'
+
+        // =============================================
+        // TESTS DE INTEGRACIÓN (100% cobertura)
+        // =============================================
+        property 'sonar.tests.integration', 'src/test/java/integration'
+        property 'sonar.coverage.integration', 'build/reports/jacoco/test/jacocoTestReport.xml'
+
+        // =============================================
+        // TESTS E2E (100% cobertura)
+        // =============================================
+        property 'sonar.tests.e2e', 'src/test/java/e2e'
+        property 'sonar.coverage.e2e', 'build/reports/jacoco/test/jacocoTestReport.xml'
+
+        // Reporte unificado de JUnit
+        property 'sonar.junit.reportPaths', 'build/test-results/test'
+
+        // Reporte de cobertura principal (para JaCoCo)
+        property 'sonar.coverage.jacoco.xmlReportPaths', 'build/reports/jacoco/test/jacocoTestReport.xml'
+
+        // Excluir clases que no deben medirse
+        property 'sonar.exclusions', '**/*Test.java'
+
+
+        property 'sonar.coverage.unit', '0.20'
+        property 'sonar.coverage.component', '0.25'
+        property 'sonar.coverage.integration', '0.30'
+        property 'sonar.coverage.e2e', '0.25'
+
+        // Verbose para debugging
+        property 'sonar.verbose', 'false'
+    }
+}
+
+tasks.named('sonar').configure {
+    dependsOn jar
+}
+
+check.dependsOn jacocoTestCoverageVerification
+test.finalizedBy jacocoTestReport
+check.dependsOn weightedCoverageCheck
+
