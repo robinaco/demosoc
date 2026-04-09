@@ -23,6 +23,7 @@ public class PersonaController {
         dto.setId(persona.getId());
         dto.setNombre(persona.getNombre());
         dto.setEmail(persona.getEmail());
+        dto.setEdad(persona.getEdad());
         return dto;
     }
 
@@ -32,6 +33,7 @@ public class PersonaController {
         persona.setId(dto.getId());
         persona.setNombre(dto.getNombre());
         persona.setEmail(dto.getEmail());
+        persona.setEdad(dto.getEdad());
         return persona;
     }
 
