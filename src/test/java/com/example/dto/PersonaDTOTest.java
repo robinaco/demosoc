@@ -1,4 +1,4 @@
-package com.dto;
+package com.example.dto;
 
 import com.example.dto.PersonaDTO;
 import org.junit.jupiter.api.Test;
