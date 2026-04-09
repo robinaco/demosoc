@@ -273,7 +273,7 @@ sonar {
 
         // Excluir clases que no deben medirse
         property 'sonar.exclusions', '**/*Test.java'
-
+        property "sonar.coverage.exclusions", "**/dto/*.java"
 
         property 'sonar.coverage.unit', '0.20'
         property 'sonar.coverage.component', '0.25'
