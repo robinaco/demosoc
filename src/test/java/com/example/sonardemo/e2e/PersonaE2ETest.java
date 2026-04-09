@@ -1,6 +1,6 @@
 package com.example.sonardemo.e2e;
 
-import com.example.sonardemo.entity.Persona;
+import com.example.dto.PersonaDTO;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -23,9 +23,12 @@ class PersonaE2ETest {
         // ===========================================
         // 1. CREAR persona
         // ===========================================
-        Persona nuevaPersona = new Persona(null, "Laura", "laura@email.com", 32);
+        PersonaDTO nuevaPersona = new PersonaDTO();
+        nuevaPersona.setNombre("Laura");
+        nuevaPersona.setEmail("laura@email.com");
+        nuevaPersona.setEdad(32);
 
-        ResponseEntity<Persona> postResponse = restTemplate.postForEntity("/api/personas", nuevaPersona, Persona.class);
+        ResponseEntity<PersonaDTO> postResponse = restTemplate.postForEntity("/api/personas", nuevaPersona, PersonaDTO.class);
 
         assertThat(postResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         assertThat(postResponse.getBody()).isNotNull();
@@ -37,7 +40,7 @@ class PersonaE2ETest {
         // ===========================================
         // 2. CONSULTAR persona por ID
         // ===========================================
-        ResponseEntity<Persona> getResponse = restTemplate.getForEntity("/api/personas/" + id, Persona.class);
+        ResponseEntity<PersonaDTO> getResponse = restTemplate.getForEntity("/api/personas/" + id, PersonaDTO.class);
 
         assertThat(getResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(getResponse.getBody()).isNotNull();
@@ -47,10 +50,15 @@ class PersonaE2ETest {
         // ===========================================
         // 3. ACTUALIZAR persona
         // ===========================================
-        Persona personaActualizada = new Persona(id, "Laura Updated", "laura.nuevo@email.com", 33);
-        HttpEntity<Persona> requestUpdate = new HttpEntity<>(personaActualizada);
+        PersonaDTO personaActualizada = new PersonaDTO();
+        personaActualizada.setId(id);
+        personaActualizada.setNombre("Laura Updated");
+        personaActualizada.setEmail("laura.nuevo@email.com");
+        personaActualizada.setEdad(33);
 
-        ResponseEntity<Persona> putResponse = restTemplate.exchange("/api/personas/" + id, HttpMethod.PUT, requestUpdate, Persona.class);
+        HttpEntity<PersonaDTO> requestUpdate = new HttpEntity<>(personaActualizada);
+
+        ResponseEntity<PersonaDTO> putResponse = restTemplate.exchange("/api/personas/" + id, HttpMethod.PUT, requestUpdate, PersonaDTO.class);
 
         assertThat(putResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(putResponse.getBody()).isNotNull();
@@ -61,18 +69,28 @@ class PersonaE2ETest {
         // ===========================================
         restTemplate.delete("/api/personas/" + id);
 
-        ResponseEntity<Persona> getAfterDelete = restTemplate.getForEntity("/api/personas/" + id, Persona.class);
+        ResponseEntity<PersonaDTO> getAfterDelete = restTemplate.getForEntity("/api/personas/" + id, PersonaDTO.class);
         assertThat(getAfterDelete.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
     @Test
     void flujoCritico_ListarTodasLasPersonas() {
         // Crear algunas personas
-        restTemplate.postForEntity("/api/personas", new Persona(null, "Uno", "uno@email.com", 20), Persona.class);
-        restTemplate.postForEntity("/api/personas", new Persona(null, "Dos", "dos@email.com", 30), Persona.class);
+        PersonaDTO persona1 = new PersonaDTO();
+        persona1.setNombre("Uno");
+        persona1.setEmail("uno@email.com");
+        persona1.setEdad(20);
+
+        PersonaDTO persona2 = new PersonaDTO();
+        persona2.setNombre("Dos");
+        persona2.setEmail("dos@email.com");
+        persona2.setEdad(30);
+
+        restTemplate.postForEntity("/api/personas", persona1, PersonaDTO.class);
+        restTemplate.postForEntity("/api/personas", persona2, PersonaDTO.class);
 
         // Listar todas
-        ResponseEntity<Persona[]> getResponse = restTemplate.getForEntity("/api/personas", Persona[].class);
+        ResponseEntity<PersonaDTO[]> getResponse = restTemplate.getForEntity("/api/personas", PersonaDTO[].class);
 
         assertThat(getResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(getResponse.getBody()).isNotEmpty();
