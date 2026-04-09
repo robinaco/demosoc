@@ -73,7 +73,7 @@ COPY --from=builder /app/build/libs/*.jar app.jar
 # USER appuser
 
 # Configurar directorio temporal para Tomcat/Spring Boot
-ENV JAVA_OPTS="-Djava.io.tmpdir=/temp"
+ENV JAVA_OPTS="-Djava.io.tmpdir=/tmp"
 
 EXPOSE 8080
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
