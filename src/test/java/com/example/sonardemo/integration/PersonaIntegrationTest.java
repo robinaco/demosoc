@@ -1,6 +1,6 @@
 package com.example.sonardemo.integration;
 
-import com.example.sonardemo.entity.Persona;
+import com.example.dto.PersonaDTO;
 import com.example.sonardemo.repository.PersonaRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,22 +35,30 @@ class PersonaIntegrationTest {
 
     @Test
     void testCrearYListarPersonas() throws Exception {
-        Persona persona1 = new Persona(null, "Carlos", "carlos@email.com", 30);
+        PersonaDTO persona1 = new PersonaDTO();
+        persona1.setNombre("Carlos");
+        persona1.setEmail("carlos@email.com");
+        persona1.setEdad(30);
 
         mockMvc.perform(post("/api/personas")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(persona1)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.nombre").value("Carlos"));
+                .andExpect(jsonPath("$.nombre").value("Carlos"))
+                .andExpect(jsonPath("$.edad").value(30));
 
         // Crear segunda persona
-        Persona persona2 = new Persona(null, "Ana", "ana@email.com", 25);
+        PersonaDTO persona2 = new PersonaDTO();
+        persona2.setNombre("Ana");
+        persona2.setEmail("ana@email.com");
+        persona2.setEdad(25);
 
         mockMvc.perform(post("/api/personas")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(persona2)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.nombre").value("Ana"));
+                .andExpect(jsonPath("$.nombre").value("Ana"))
+                .andExpect(jsonPath("$.edad").value(25));
 
         // Listar todas
         mockMvc.perform(get("/api/personas"))
@@ -63,7 +71,10 @@ class PersonaIntegrationTest {
     @Test
     void testObtenerPersonaPorId() throws Exception {
         // Crear persona
-        Persona persona = new Persona(null, "Pedro", "pedro@email.com", 40);
+        PersonaDTO persona = new PersonaDTO();
+        persona.setNombre("Pedro");
+        persona.setEmail("pedro@email.com");
+        persona.setEdad(40);
 
         String response = mockMvc.perform(post("/api/personas")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -73,14 +84,15 @@ class PersonaIntegrationTest {
                 .getResponse()
                 .getContentAsString();
 
-        Persona personaCreada = objectMapper.readValue(response, Persona.class);
+        PersonaDTO personaCreada = objectMapper.readValue(response, PersonaDTO.class);
         Long id = personaCreada.getId();
 
         // Obtener por ID
         mockMvc.perform(get("/api/personas/{id}", id))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.nombre").value("Pedro"))
-                .andExpect(jsonPath("$.email").value("pedro@email.com"));
+                .andExpect(jsonPath("$.email").value("pedro@email.com"))
+                .andExpect(jsonPath("$.edad").value(40));
     }
 
     @Test
