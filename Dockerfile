@@ -16,6 +16,7 @@ RUN ./gradlew build -x test -x jacocoTestReport -x jacocoTestCoverageVerificatio
 FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
 
+RUN apk add --no-cache curl
 # Crear directorios necesarios
 RUN mkdir -p /temp && \
     addgroup -S appgroup && \
