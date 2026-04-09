@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-echo "Obteniendo task definition actual..."
+echo "Getting current task definition..."
 
 aws ecs describe-task-definition \
   --task-definition "${ECS_TASK_FAMILY}" \
@@ -9,7 +9,7 @@ aws ecs describe-task-definition \
   --query 'taskDefinition' \
   > current-task-def.json
 
-echo "Actualizando imagen..."
+echo "Updating image..."
 
 jq --arg IMAGE "${DOCKER_IMAGE}" --arg CONTAINER "${ECS_CONTAINER_NAME}" '
 {
@@ -30,7 +30,7 @@ jq --arg IMAGE "${DOCKER_IMAGE}" --arg CONTAINER "${ECS_CONTAINER_NAME}" '
 }
 ' current-task-def.json > new-task-def.json
 
-echo "Registrando nueva task definition..."
+echo "Registering new task definition..."
 
 NEW_TASK_DEF_ARN=$(aws ecs register-task-definition \
   --cli-input-json file://new-task-def.json \
@@ -38,7 +38,7 @@ NEW_TASK_DEF_ARN=$(aws ecs register-task-definition \
   --query 'taskDefinition.taskDefinitionArn' \
   --output text)
 
-echo "Actualizando servicio..."
+echo "Updating service..."
 
 aws ecs update-service \
   --cluster "${ECS_CLUSTER}" \
@@ -47,7 +47,7 @@ aws ecs update-service \
   --region "${AWS_REGION}" \
   --force-new-deployment
 
-echo "Esperando estabilidad..."
+echo "Waiting for stability..."
 
 aws ecs wait services-stable \
   --cluster "${ECS_CLUSTER}" \
