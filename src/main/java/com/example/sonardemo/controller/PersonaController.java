@@ -37,6 +37,12 @@ public class PersonaController {
         return persona;
     }
 
+    @GetMapping("/health")
+    public ResponseEntity<String> health() {
+        return ResponseEntity.ok("OK");
+    }
+
+
     @GetMapping
     public List<Persona> listar() {
         return personaService.listar();
