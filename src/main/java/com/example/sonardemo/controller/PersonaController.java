@@ -39,7 +39,7 @@ public class PersonaController {
 
     @GetMapping("/health")
     public ResponseEntity<String> health() {
-        return ResponseEntity.ok("OK");
+        return ResponseEntity.ok("OK, we have a health check");
     }
 
 
