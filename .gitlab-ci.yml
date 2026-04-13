@@ -1,0 +1,21 @@
+image: gradle:8.5-jdk17
+
+stages:
+  - build
+  - test
+
+before_script:
+  - chmod +x gradlew
+
+build:
+  stage: build
+  script:
+    - ./gradlew clean compileJava --no-daemon
+
+test:
+  stage: test
+  script:
+    - ./gradlew test --no-daemon
+  artifacts:
+    reports:
+      junit: build/test-results/test/*.xml
