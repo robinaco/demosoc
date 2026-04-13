@@ -5,7 +5,6 @@ stages:
   - test
   - sonar
 
-
 cache:
   paths:
     - .gradle/
@@ -18,14 +17,13 @@ build:
   stage: build
   script:
     - ./gradlew clean compileJava --no-daemon
-  only:
-    - main
-    - merge_requests
+  rules:
+    - if: $CI_COMMIT_BRANCH == 'main'
+    - if: $CI_MERGE_REQUEST_ID
 
 test:
   stage: test
   script:
-    - chmod +x gradlew
     - ./gradlew test jacocoTestReport --no-daemon
   artifacts:
     reports:
@@ -37,15 +35,12 @@ test:
     - if: $CI_COMMIT_BRANCH == 'main'
     - if: $CI_MERGE_REQUEST_ID
 
-  only:
-    - main
-    - merge_requests
-
 sonar:
   stage: sonar
   needs: ["test"]
+  dependencies:
+    - test
   script:
-    - chmod +x gradlew
     - |
       ./gradlew sonar --no-daemon \
         -Dsonar.host.url=$SONAR_HOST_URL \
@@ -55,7 +50,5 @@ sonar:
         -Dsonar.qualitygate.wait=true \
         -Dsonar.qualitygate.timeout=600 \
         -Dsonar.coverage.jacoco.xmlReportPaths=build/reports/jacoco/test/jacocoTestReport.xml
-
-      echo "✅ Análisis y Quality Gate completados con éxito."
-  only:
-    - main
+  rules:
+    - if: $CI_COMMIT_BRANCH == 'main'
