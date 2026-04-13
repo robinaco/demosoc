@@ -3,6 +3,7 @@ image: gradle:8.5-jdk17
 stages:
   - build
   - test
+  - sonar
 
 cache:
   paths:
@@ -19,7 +20,19 @@ build:
 test:
   stage: test
   script:
-    - ./gradlew test --no-daemon
+    - ./gradlew test jacocoTestReport --no-daemon
   artifacts:
     reports:
       junit: build/test-results/test/*.xml
+
+sonar:
+  stage: sonar
+  script:
+    - ./gradlew sonar --no-daemon \
+        -Dsonar.host.url=$SONAR_HOST_URL \
+        -Dsonar.organization=$SONAR_ORG \
+        -Dsonar.projectKey=$SONAR_PROJECT_KEY \
+        -Dsonar.token=$SONAR_TOKEN \
+        -Dsonar.coverage.jacoco.xmlReportPaths=build/reports/jacoco/test/jacocoTestReport.xml
+  only:
+    - branches
