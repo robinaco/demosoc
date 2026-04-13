@@ -45,54 +45,52 @@ quality_gate:
   script:
     - echo "Consultando Quality Gate para el proyecto $SONAR_PROJECT_KEY en la rama $CI_COMMIT_BRANCH"
     
-    # --- Bloque de depuración: Verificar el token y la conexión ---
+    # --- Verificar token (endpoint correcto para SonarCloud) ---
     - echo "Verificando autenticación con SonarCloud..."
     - |
       TOKEN_CHECK=$(curl -s -o /dev/null -w "%{http_code}" -u $SONAR_TOKEN: \
-        "https://sonarcloud.io/api/user/current")
+        "https://sonarcloud.io/api/authentication/validate")
+      
       if [ "$TOKEN_CHECK" -ne 200 ]; then
         echo "❌ Error de autenticación con SonarCloud. Código HTTP: $TOKEN_CHECK"
-        echo "Verifica que el SONAR_TOKEN sea válido y tenga permisos."
+        echo "Verifica que el SONAR_TOKEN sea válido."
         exit 1
       fi
       echo "✅ Autenticación exitosa."
     
-    # --- Consulta del Quality Gate con depuración ---
-    - echo "Consultando estado del Quality Gate..."
+    # --- Esperar a que SonarCloud procese el análisis ---
+    - echo "Esperando a que SonarCloud procese el análisis..."
+    - sleep 10
+    
+    # --- Consultar Quality Gate con reintentos ---
     - |
-      RESPONSE=$(curl -s -w "\n%{http_code}" -u $SONAR_TOKEN: \
-        "https://sonarcloud.io/api/qualitygates/project_status?projectKey=$SONAR_PROJECT_KEY&branch=$CI_COMMIT_BRANCH")
+      for i in {1..12}; do
+        echo "Intento $i: Consultando Quality Gate..."
+        
+        RESPONSE=$(curl -s -u $SONAR_TOKEN: \
+          "https://sonarcloud.io/api/qualitygates/project_status?projectKey=$SONAR_PROJECT_KEY&branch=$CI_COMMIT_BRANCH")
+        
+        STATUS=$(echo "$RESPONSE" | grep -o '"status":"[^"]*"' | cut -d'"' -f4)
+        
+        echo "Estado actual: ${STATUS:-'No disponible'}"
+        
+        if [ "$STATUS" = "OK" ]; then
+          echo "✅ Quality Gate PASSED"
+          exit 0
+        elif [ "$STATUS" = "ERROR" ]; then
+          echo "❌ Quality Gate FAILED"
+          echo "Respuesta completa: $RESPONSE"
+          exit 1
+        fi
+        
+        # Si no está listo, esperar 10 segundos
+        sleep 10
+      done
       
-      HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
-      BODY=$(echo "$RESPONSE" | sed '$d')
+      echo "⏱️ Timeout: SonarCloud no completó el análisis a tiempo"
+      echo "La rama '$CI_COMMIT_BRANCH' podría no haberse analizado correctamente"
+      exit 1
       
-      echo "Código HTTP: $HTTP_CODE"
-      echo "Respuesta completa de la API:"
-      echo "$BODY" | jq '.' 2>/dev/null || echo "$BODY"
-      
-      if [ "$HTTP_CODE" -ne 200 ]; then
-        echo "❌ Error al consultar el Quality Gate (HTTP $HTTP_CODE)."
-        echo "Es posible que la rama '$CI_COMMIT_BRANCH' no haya sido analizada aún en SonarCloud."
-        exit 1
-      fi
-      
-      STATUS=$(echo "$BODY" | grep -o '"status":"[^"]*"' | cut -d'"' -f4)
-      
-      if [ -z "$STATUS" ]; then
-        echo "⚠️ No se pudo determinar el estado del Quality Gate."
-        echo "La rama '$CI_COMMIT_BRANCH' podría no existir en SonarCloud."
-        echo "Por favor, ejecuta primero el análisis de la rama."
-        exit 1
-      fi
-      
-      echo "Quality Gate Status: $STATUS"
-      
-      if [ "$STATUS" != "OK" ]; then
-        echo "❌ Quality Gate FAILED"
-        exit 1
-      else
-        echo "✅ Quality Gate PASSED"
-      fi
   dependencies:
     - sonar
   only:
