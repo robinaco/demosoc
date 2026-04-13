@@ -29,6 +29,10 @@ test:
 sonar:
   stage: sonar
   script:
+    - chmod +x gradlew
+    - echo "=== TODAS LAS VARIABLES CI/CD ==="
+    - env | sort
+    - echo "================================"
     - echo "URL=$SONAR_HOST_URL"
     - ./gradlew sonar --no-daemon -Dsonar.host.url=$SONAR_HOST_URL -Dsonar.organization=$SONAR_ORG -Dsonar.projectKey=$SONAR_PROJECT_KEY -Dsonar.token=$SONAR_TOKEN -Dsonar.coverage.jacoco.xmlReportPaths=build/reports/jacoco/test/jacocoTestReport.xml
   only:
