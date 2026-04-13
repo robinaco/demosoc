@@ -4,6 +4,7 @@ stages:
   - build
   - test
   - sonar
+  - quality_gate 
 
 cache:
   paths:
@@ -37,3 +38,26 @@ sonar:
   only:
     - branches
     
+
+quality_gate:
+  stage: quality_gate
+  image: curlimages/curl:latest
+  script:
+    - echo "Consultando Quality Gate..."
+
+    # Obtener estado
+    - |
+      STATUS=$(curl -s -u $SONAR_TOKEN: \
+        "https://sonarcloud.io/api/qualitygates/project_status?projectKey=$SONAR_PROJECT_KEY" \
+        | grep -o '"status":"[^"]*"' | cut -d'"' -f4)
+
+      echo "Quality Gate Status: $STATUS"
+
+      if [ "$STATUS" != "OK" ]; then
+        echo "❌ Quality Gate FAILED"
+        exit 1
+      else
+        echo "✅ Quality Gate PASSED"
+      fi
+  dependencies:
+    - sonar
