@@ -4,6 +4,10 @@ stages:
   - build
   - test
 
+cache:
+  paths:
+    - .gradle/
+
 before_script:
   - chmod +x gradlew
 
@@ -19,5 +23,3 @@ test:
   artifacts:
     reports:
       junit: build/test-results/test/*.xml
-
-      
