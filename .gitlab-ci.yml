@@ -4,11 +4,12 @@ stages:
   - build
   - test
   - sonar
-  - quality_gate 
+
 
 cache:
   paths:
     - .gradle/
+    - .gradle/caches
 
 before_script:
   - chmod +x gradlew
@@ -24,17 +25,25 @@ build:
 test:
   stage: test
   script:
+    - chmod +x gradlew
     - ./gradlew test jacocoTestReport --no-daemon
   artifacts:
     reports:
       junit: build/test-results/test/*.xml
+    paths:
+      - build/reports/jacoco/
+    expire_in: 1 week
+  rules:
+    - if: $CI_COMMIT_BRANCH == 'main'
+    - if: $CI_MERGE_REQUEST_ID
+
   only:
     - main
     - merge_requests
 
 sonar:
   stage: sonar
-  needs: ["test"] # Espera a que los tests terminen y generen los reportes
+  needs: ["test"]
   script:
     - chmod +x gradlew
     - |
