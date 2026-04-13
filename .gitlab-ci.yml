@@ -52,3 +52,5 @@ sonar:
         -Dsonar.coverage.jacoco.xmlReportPaths=build/reports/jacoco/test/jacocoTestReport.xml
   rules:
     - if: $CI_COMMIT_BRANCH == 'main'
+
+    
