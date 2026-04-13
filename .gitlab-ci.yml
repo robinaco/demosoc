@@ -140,10 +140,20 @@ deploy:
     
     # Crear nueva definición con la imagen actualizada
     - |
-      NEW_TASK_DEF=$(echo $TASK_DEF | jq --name IMAGE $DOCKER_IMAGE '
+      NEW_TASK_DEF=$(echo "$TASK_DEF" | jq --arg IMAGE "$DOCKER_IMAGE" '
         .taskDefinition |
         .containerDefinitions[0].image = $IMAGE |
-        {family: .family, containerDefinitions: .containerDefinitions, volumes: .volumes, networkMode: .networkMode, requiresCompatibilities: .requiresCompatibilities, cpu: .cpu, memory: .memory, executionRoleArn: .executionRoleArn, taskRoleArn: .taskRoleArn}
+        {
+          family: .family,
+          containerDefinitions: .containerDefinitions,
+          volumes: .volumes,
+          networkMode: .networkMode,
+          requiresCompatibilities: .requiresCompatibilities,
+          cpu: .cpu,
+          memory: .memory,
+          executionRoleArn: .executionRoleArn,
+          taskRoleArn: .taskRoleArn
+        }
       ')
     
     - echo "$NEW_TASK_DEF" > task-def.json
@@ -151,10 +161,14 @@ deploy:
     # Registrar nueva definición de tarea
     - aws ecs register-task-definition --cli-input-json file://task-def.json
     
-    # Actualizar el servicio de ECS
-    - aws ecs update-service --cluster $ECS_CLUSTER --service $ECS_SERVICE --task-definition $ECS_TASK_FAMILY --force-new-deployment
+    # Obtener la nueva versión de la definición de tarea
+    - NEW_TASK_REVISION=$(aws ecs register-task-definition --cli-input-json file://task-def.json | jq -r '.taskDefinition.revision')
+    
+    # Actualizar el servicio de ECS con la nueva revisión
+    - aws ecs update-service --cluster $ECS_CLUSTER --service $ECS_SERVICE --task-definition $ECS_TASK_FAMILY:$NEW_TASK_REVISION --force-new-deployment
     
     - echo "✅ Despliegue completado exitosamente"
+    # - echo "Estado del despliegue: https://console.aws.amazon.com/ecs/home?region=$AWS_REGION#/clusters/$ECS_CLUSTER/services/$ECS_SERVICE"
   rules:
     - if: $CI_COMMIT_BRANCH == 'main'
   needs:
