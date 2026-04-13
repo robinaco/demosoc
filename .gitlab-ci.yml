@@ -34,78 +34,19 @@ test:
 
 sonar:
   stage: sonar
+  needs: ["test"] # Espera a que los tests terminen y generen los reportes
   script:
     - chmod +x gradlew
-    - echo "=== Iniciando análisis SonarCloud ==="
     - |
       ./gradlew sonar --no-daemon \
         -Dsonar.host.url=$SONAR_HOST_URL \
         -Dsonar.organization=$SONAR_ORG \
         -Dsonar.projectKey=$SONAR_PROJECT_KEY \
         -Dsonar.token=$SONAR_TOKEN \
+        -Dsonar.qualitygate.wait=true \
+        -Dsonar.qualitygate.timeout=600 \
         -Dsonar.coverage.jacoco.xmlReportPaths=build/reports/jacoco/test/jacocoTestReport.xml
-    
-    - |
-      if [ $? -eq 0 ]; then
-        echo "✅ Análisis de SonarCloud completado exitosamente"
-        echo "🔗 Ver resultado en: https://sonarcloud.io/project/overview?id=$SONAR_PROJECT_KEY"
-      else
-        echo "❌ El análisis de SonarCloud falló"
-        exit 1
-      fi
+
+      echo "✅ Análisis y Quality Gate completados con éxito."
   only:
     - main
-
-quality_gate:
-  stage: quality_gate
-  image: curlimages/curl:latest
-  before_script: []
-  script:
-    - echo "Consultando Quality Gate para $SONAR_PROJECT_KEY en rama $CI_COMMIT_BRANCH"
-    
-    - |
-      # Verificar token
-      TOKEN_CHECK=$(curl -s -o /dev/null -w "%{http_code}" -u $SONAR_TOKEN: \
-        "https://sonarcloud.io/api/authentication/validate")
-      if [ "$TOKEN_CHECK" -ne 200 ]; then
-        echo "❌ Error de autenticación"
-        exit 1
-      fi
-      echo "✅ Autenticación exitosa"
-    
-    - echo "Esperando procesamiento de SonarCloud..."
-    - sleep 15
-    
-    - |
-      # Reintentar hasta 15 veces (2.5 minutos)
-      for i in $(seq 1 15); do
-        echo "Intento $i/15..."
-        
-        RESPONSE=$(curl -s -u $SONAR_TOKEN: \
-          "https://sonarcloud.io/api/qualitygates/project_status?projectKey=$SONAR_PROJECT_KEY&branch=$CI_COMMIT_BRANCH")
-        
-        STATUS=$(echo "$RESPONSE" | jq -r '.projectStatus.status' 2>/dev/null || echo "")
-        
-        if [ "$STATUS" = "OK" ]; then
-          echo "✅ Quality Gate PASSED"
-          exit 0
-        elif [ "$STATUS" = "ERROR" ]; then
-          echo "❌ Quality Gate FAILED"
-          exit 1
-        elif [ "$STATUS" = "NONE" ] || [ -z "$STATUS" ]; then
-          echo "⏳ Análisis en progreso o no disponible..."
-          sleep 10
-        else
-          echo "⚠️ Estado inesperado: $STATUS"
-          sleep 10
-        fi
-      done
-      
-      echo "❌ Timeout: Quality Gate no disponible después de 15 intentos"
-      echo "Verifica en https://sonarcloud.io/project/overview?id=$SONAR_PROJECT_KEY"
-      exit 1
-      
-  only:
-    - main  # ← Solo ejecutar en la rama principal
-  dependencies:
-    - sonar
