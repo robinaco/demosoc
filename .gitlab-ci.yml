@@ -35,44 +35,26 @@ sonar:
     - echo "================================"
     - echo "URL=$SONAR_HOST_URL"
     - ./gradlew sonar --no-daemon -Dsonar.host.url=$SONAR_HOST_URL -Dsonar.organization=$SONAR_ORG -Dsonar.projectKey=$SONAR_PROJECT_KEY -Dsonar.token=$SONAR_TOKEN -Dsonar.coverage.jacoco.xmlReportPaths=build/reports/jacoco/test/jacocoTestReport.xml
-  # only:
-  #   - branches
-    
 
+    
+ 
 quality_gate:
   stage: quality_gate
   image: curlimages/curl:latest
+  before_script: []  # ← Esto anula el before_script global
   script:
-    - echo "Esperando que SonarCloud procese el análisis..."
-    - sleep 10  # Espera inicial de 10 segundos
-
+    - echo "Consultando Quality Gate..."
     - |
-      # Intentar obtener el estado hasta 12 veces (2 minutos total)
-      for i in {1..12}; do
-        echo "Intento $i: Consultando Quality Gate..."
-
-        RESPONSE=$(curl -s -u $SONAR_TOKEN: \
-          "https://sonarcloud.io/api/qualitygates/project_status?projectKey=$SONAR_PROJECT_KEY&branch=$CI_COMMIT_BRANCH")
-
-        STATUS=$(echo "$RESPONSE" | grep -o '"status":"[^"]*"' | cut -d'"' -f4)
-
-        echo "Quality Gate Status: $STATUS"
-
-        if [ "$STATUS" = "OK" ]; then
-          echo "✅ Quality Gate PASSED"
-          exit 0
-        elif [ "$STATUS" = "ERROR" ]; then
-          echo "❌ Quality Gate FAILED"
-          echo "Detalles: $RESPONSE"
-          exit 1
-        fi
-
-        # Si no está listo, esperar 10 segundos antes del siguiente intento
-        sleep 10
-      done
-
-      echo "⏱️ Timeout: SonarCloud no completó el análisis a tiempo"
-      exit 1
+      STATUS=$(curl -s -u $SONAR_TOKEN: \
+        "https://sonarcloud.io/api/qualitygates/project_status?projectKey=$SONAR_PROJECT_KEY&branch=$CI_COMMIT_BRANCH" \
+        | grep -o '"status":"[^"]*"' | cut -d'"' -f4)
+      echo "Quality Gate Status: $STATUS"
+      if [ "$STATUS" != "OK" ]; then
+        echo "❌ Quality Gate FAILED"
+        exit 1
+      else
+        echo "✅ Quality Gate PASSED"
+      fi
   dependencies:
     - sonar
   only:
