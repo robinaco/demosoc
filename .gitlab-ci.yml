@@ -37,14 +37,24 @@ sonar:
   script:
     - chmod +x gradlew
     - echo "=== Iniciando análisis SonarCloud ==="
-    - ./gradlew sonar --no-daemon \
+    - |
+      ./gradlew sonar --no-daemon \
         -Dsonar.host.url=$SONAR_HOST_URL \
         -Dsonar.organization=$SONAR_ORG \
         -Dsonar.projectKey=$SONAR_PROJECT_KEY \
         -Dsonar.token=$SONAR_TOKEN \
         -Dsonar.coverage.jacoco.xmlReportPaths=build/reports/jacoco/test/jacocoTestReport.xml
+    
+    - |
+      if [ $? -eq 0 ]; then
+        echo "✅ Análisis de SonarCloud completado exitosamente"
+        echo "🔗 Ver resultado en: https://sonarcloud.io/project/overview?id=$SONAR_PROJECT_KEY"
+      else
+        echo "❌ El análisis de SonarCloud falló"
+        exit 1
+      fi
   only:
-    - main  # ← Solo analizar la rama principal
+    - main
 
 quality_gate:
   stage: quality_gate
