@@ -44,50 +44,51 @@ quality_gate:
   script:
     - echo "Consultando Quality Gate para el proyecto $SONAR_PROJECT_KEY en la rama $CI_COMMIT_BRANCH"
     
-    # --- Verificar token (endpoint correcto para SonarCloud) ---
     - echo "Verificando autenticación con SonarCloud..."
     - |
       TOKEN_CHECK=$(curl -s -o /dev/null -w "%{http_code}" -u $SONAR_TOKEN: \
         "https://sonarcloud.io/api/authentication/validate")
-      
       if [ "$TOKEN_CHECK" -ne 200 ]; then
-        echo "Error de autenticación con SonarCloud. Código HTTP: $TOKEN_CHECK"
-        echo "Verifica que el SONAR_TOKEN sea válido."
+        echo "❌ Error de autenticación. Código: $TOKEN_CHECK"
         exit 1
       fi
-      echo "Autenticación exitosa."
+      echo "✅ Autenticación exitosa"
     
-    # --- Esperar a que SonarCloud procese el análisis ---
     - echo "Esperando a que SonarCloud procese el análisis..."
     - sleep 10
     
-    # --- Consultar Quality Gate con reintentos ---
+    - echo "Consultando Quality Gate (hasta 12 intentos)..."
     - |
-      for i in {1..12}; do
-        echo "Intento $i: Consultando Quality Gate..."
+      MAX_RETRIES=12
+      RETRY_COUNT=0
+      STATUS=""
+      
+      while [ $RETRY_COUNT -lt $MAX_RETRIES ] && [ "$STATUS" != "OK" ] && [ "$STATUS" != "ERROR" ]; do
+        RETRY_COUNT=$((RETRY_COUNT + 1))
+        echo "Intento $RETRY_COUNT de $MAX_RETRIES..."
         
         RESPONSE=$(curl -s -u $SONAR_TOKEN: \
           "https://sonarcloud.io/api/qualitygates/project_status?projectKey=$SONAR_PROJECT_KEY&branch=$CI_COMMIT_BRANCH")
         
         STATUS=$(echo "$RESPONSE" | grep -o '"status":"[^"]*"' | cut -d'"' -f4)
         
-        echo "Estado actual: ${STATUS:-'No disponible'}"
-        
-        if [ "$STATUS" = "OK" ]; then
-          echo "Quality Gate PASSED"
+        if [ -z "$STATUS" ]; then
+          echo "⏳ Análisis aún no disponible, esperando 10 segundos..."
+          sleep 10
+        elif [ "$STATUS" = "OK" ]; then
+          echo "✅ Quality Gate PASSED"
           exit 0
         elif [ "$STATUS" = "ERROR" ]; then
-          echo "Quality Gate FAILED"
-          echo "Respuesta completa: $RESPONSE"
+          echo "❌ Quality Gate FAILED"
+          echo "Respuesta: $RESPONSE"
           exit 1
+        else
+          echo "Estado actual: $STATUS"
+          sleep 10
         fi
-        
-        # Si no está listo, esperar 10 segundos
-        sleep 10
       done
       
-      echo "Timeout: SonarCloud no completó el análisis a tiempo"
-      echo "La rama '$CI_COMMIT_BRANCH' podría no haberse analizado correctamente"
+      echo "❌ Timeout: No se pudo obtener el Quality Gate después de $MAX_RETRIES intentos"
       exit 1
       
   dependencies:
