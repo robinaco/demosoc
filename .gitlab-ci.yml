@@ -17,6 +17,9 @@ build:
   stage: build
   script:
     - ./gradlew clean compileJava --no-daemon
+  only:
+    - main
+    - merge_requests
 
 test:
   stage: test
@@ -25,73 +28,74 @@ test:
   artifacts:
     reports:
       junit: build/test-results/test/*.xml
+  only:
+    - main
+    - merge_requests
 
 sonar:
   stage: sonar
   script:
     - chmod +x gradlew
-    - echo "=== TODAS LAS VARIABLES CI/CD ==="
-    - env | sort
-    - echo "================================"
-    - echo "URL=$SONAR_HOST_URL"
-    - ./gradlew sonar --no-daemon -Dsonar.host.url=$SONAR_HOST_URL -Dsonar.organization=$SONAR_ORG -Dsonar.projectKey=$SONAR_PROJECT_KEY -Dsonar.token=$SONAR_TOKEN -Dsonar.coverage.jacoco.xmlReportPaths=build/reports/jacoco/test/jacocoTestReport.xml
-
+    - echo "=== Iniciando análisis SonarCloud ==="
+    - ./gradlew sonar --no-daemon \
+        -Dsonar.host.url=$SONAR_HOST_URL \
+        -Dsonar.organization=$SONAR_ORG \
+        -Dsonar.projectKey=$SONAR_PROJECT_KEY \
+        -Dsonar.token=$SONAR_TOKEN \
+        -Dsonar.coverage.jacoco.xmlReportPaths=build/reports/jacoco/test/jacocoTestReport.xml
+  only:
+    - main  # ← Solo analizar la rama principal
 
 quality_gate:
   stage: quality_gate
   image: curlimages/curl:latest
   before_script: []
   script:
-    - echo "Consultando Quality Gate para el proyecto $SONAR_PROJECT_KEY en la rama $CI_COMMIT_BRANCH"
+    - echo "Consultando Quality Gate para $SONAR_PROJECT_KEY en rama $CI_COMMIT_BRANCH"
     
-    - echo "Verificando autenticación con SonarCloud..."
     - |
+      # Verificar token
       TOKEN_CHECK=$(curl -s -o /dev/null -w "%{http_code}" -u $SONAR_TOKEN: \
         "https://sonarcloud.io/api/authentication/validate")
       if [ "$TOKEN_CHECK" -ne 200 ]; then
-        echo "❌ Error de autenticación. Código: $TOKEN_CHECK"
+        echo "❌ Error de autenticación"
         exit 1
       fi
       echo "✅ Autenticación exitosa"
     
-    - echo "Esperando a que SonarCloud procese el análisis..."
-    - sleep 10
+    - echo "Esperando procesamiento de SonarCloud..."
+    - sleep 15
     
-    - echo "Consultando Quality Gate (hasta 12 intentos)..."
     - |
-      MAX_RETRIES=12
-      RETRY_COUNT=0
-      STATUS=""
-      
-      while [ $RETRY_COUNT -lt $MAX_RETRIES ] && [ "$STATUS" != "OK" ] && [ "$STATUS" != "ERROR" ]; do
-        RETRY_COUNT=$((RETRY_COUNT + 1))
-        echo "Intento $RETRY_COUNT de $MAX_RETRIES..."
+      # Reintentar hasta 15 veces (2.5 minutos)
+      for i in $(seq 1 15); do
+        echo "Intento $i/15..."
         
         RESPONSE=$(curl -s -u $SONAR_TOKEN: \
           "https://sonarcloud.io/api/qualitygates/project_status?projectKey=$SONAR_PROJECT_KEY&branch=$CI_COMMIT_BRANCH")
         
-        STATUS=$(echo "$RESPONSE" | grep -o '"status":"[^"]*"' | cut -d'"' -f4)
+        STATUS=$(echo "$RESPONSE" | jq -r '.projectStatus.status' 2>/dev/null || echo "")
         
-        if [ -z "$STATUS" ]; then
-          echo "⏳ Análisis aún no disponible, esperando 10 segundos..."
-          sleep 10
-        elif [ "$STATUS" = "OK" ]; then
+        if [ "$STATUS" = "OK" ]; then
           echo "✅ Quality Gate PASSED"
           exit 0
         elif [ "$STATUS" = "ERROR" ]; then
           echo "❌ Quality Gate FAILED"
-          echo "Respuesta: $RESPONSE"
           exit 1
+        elif [ "$STATUS" = "NONE" ] || [ -z "$STATUS" ]; then
+          echo "⏳ Análisis en progreso o no disponible..."
+          sleep 10
         else
-          echo "Estado actual: $STATUS"
+          echo "⚠️ Estado inesperado: $STATUS"
           sleep 10
         fi
       done
       
-      echo "❌ Timeout: No se pudo obtener el Quality Gate después de $MAX_RETRIES intentos"
+      echo "❌ Timeout: Quality Gate no disponible después de 15 intentos"
+      echo "Verifica en https://sonarcloud.io/project/overview?id=$SONAR_PROJECT_KEY"
       exit 1
       
+  only:
+    - main  # ← Solo ejecutar en la rama principal
   dependencies:
     - sonar
-  only:
-    - branches
