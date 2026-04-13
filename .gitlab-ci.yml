@@ -36,8 +36,7 @@ sonar:
     - echo "URL=$SONAR_HOST_URL"
     - ./gradlew sonar --no-daemon -Dsonar.host.url=$SONAR_HOST_URL -Dsonar.organization=$SONAR_ORG -Dsonar.projectKey=$SONAR_PROJECT_KEY -Dsonar.token=$SONAR_TOKEN -Dsonar.coverage.jacoco.xmlReportPaths=build/reports/jacoco/test/jacocoTestReport.xml
 
-    
- 
+
 quality_gate:
   stage: quality_gate
   image: curlimages/curl:latest
@@ -52,11 +51,11 @@ quality_gate:
         "https://sonarcloud.io/api/authentication/validate")
       
       if [ "$TOKEN_CHECK" -ne 200 ]; then
-        echo "❌ Error de autenticación con SonarCloud. Código HTTP: $TOKEN_CHECK"
+        echo "Error de autenticación con SonarCloud. Código HTTP: $TOKEN_CHECK"
         echo "Verifica que el SONAR_TOKEN sea válido."
         exit 1
       fi
-      echo "✅ Autenticación exitosa."
+      echo "Autenticación exitosa."
     
     # --- Esperar a que SonarCloud procese el análisis ---
     - echo "Esperando a que SonarCloud procese el análisis..."
@@ -75,10 +74,10 @@ quality_gate:
         echo "Estado actual: ${STATUS:-'No disponible'}"
         
         if [ "$STATUS" = "OK" ]; then
-          echo "✅ Quality Gate PASSED"
+          echo "Quality Gate PASSED"
           exit 0
         elif [ "$STATUS" = "ERROR" ]; then
-          echo "❌ Quality Gate FAILED"
+          echo "Quality Gate FAILED"
           echo "Respuesta completa: $RESPONSE"
           exit 1
         fi
@@ -87,7 +86,7 @@ quality_gate:
         sleep 10
       done
       
-      echo "⏱️ Timeout: SonarCloud no completó el análisis a tiempo"
+      echo "Timeout: SonarCloud no completó el análisis a tiempo"
       echo "La rama '$CI_COMMIT_BRANCH' podría no haberse analizado correctamente"
       exit 1
       
