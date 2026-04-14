@@ -185,7 +185,7 @@ owasp-zap-security:
   script:
     - echo "Iniciando escaneo de seguridad OWASP ZAP"
     - echo "OpenAPI URL: $OPENAPI_URL"
-    - curl -s -o /dev/null $OPENAPI_URL && echo "Status: 200 OK" || echo "Status: ERROR"
+    - "curl -s -o /dev/null $OPENAPI_URL && echo 'Status: 200 OK' || echo 'Status: ERROR'"
     - echo "Ejecutando escaneo de vulnerabilidades..."
     - /zap/zap-api-scan.py -t $OPENAPI_URL -f openapi -r zap_report.html
     - EXIT_CODE=$?
