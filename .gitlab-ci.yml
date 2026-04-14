@@ -25,13 +25,14 @@ variables:
   ECS_TASK_FAMILY: 'qg-sonar-pipelines-task'
   ECS_CONTAINER_NAME: 'qg-sonar-pipelines-container'
 
-before_script:
-  - chmod +x gradlew
+
 
 # ============================================
 # BUILD STAGE
 # ============================================
 build:
+  before_script:
+    - chmod +x gradlew
   stage: build
   script:
     - ./gradlew clean compileJava --no-daemon
@@ -43,6 +44,8 @@ build:
 # TEST STAGE
 # ============================================
 test:
+  before_script:
+    - chmod +x gradlew
   stage: test
   script:
     - ./gradlew test jacocoTestReport --no-daemon
@@ -78,6 +81,8 @@ test:
 #    - if: $CI_COMMIT_BRANCH == 'main'
 
 sonar:
+  before_script:
+    - chmod +x gradlew
   stage: sonar
   variables:
     GIT_DEPTH: 0
@@ -201,35 +206,47 @@ deploy:
 owasp-zap-security:
   stage: zap-security
   image: ghcr.io/zaproxy/zaproxy:stable
-
   variables:
     OPENAPI_URL: "http://qg-sonar-pipelines-alb-1857521633.us-east-1.elb.amazonaws.com/v3/api-docs"
 
   script:
-    - echo "Iniciando OWASP ZAP scan"
-    - echo "URL: $OPENAPI_URL"
-
-    - curl -s -o /dev/null $OPENAPI_URL && echo "API OK" || echo "API ERROR"
-
-    - zap-api-scan.py -t $OPENAPI_URL -f openapi -r zap_report.html || EXIT_CODE=$?
-
-    - EXIT_CODE=${EXIT_CODE:-0}
-
-    - echo "ZAP Exit Code: $EXIT_CODE"
-
     - |
-      if [ "$EXIT_CODE" -eq 2 ]; then
-        echo "ERROR vulnerabilidades"
+      echo "Iniciando escaneo de seguridad OWASP ZAP"
+      echo "OpenAPI URL: $OPENAPI_URL"
+
+      curl -s -o /dev/null $OPENAPI_URL && echo "Status: 200 OK" || echo "Status: ERROR"
+
+      echo "Ejecutando escaneo de vulnerabilidades..."
+      /zap/zap-api-scan.py -t $OPENAPI_URL -f openapi -r zap_report.html
+
+      EXIT_CODE=$?
+
+      echo "========================================="
+      echo "ZAP Exit Code: $EXIT_CODE"
+      echo "========================================="
+
+      if [ $EXIT_CODE -eq 2 ]; then
+        echo "ERROR: Se encontraron vulnerabilidades"
         exit 1
       fi
-      if [ "$EXIT_CODE" -eq 1 ]; then
-        echo "WARNINGS detectadas"
+
+      if [ $EXIT_CODE -eq 1 ]; then
+        echo "WARNING: Se encontraron advertencias"
+      fi
+
+      if [ $EXIT_CODE -eq 0 ]; then
+        echo "OK: No se detectaron vulnerabilidades criticas"
       fi
 
   artifacts:
+    name: "zap-report-${CI_COMMIT_SHORT_SHA}"
     paths:
       - zap_report.html
+    expire_in: 30 days
     when: always
+
+  rules:
+    - if: $CI_COMMIT_BRANCH == 'main'
 
   needs:
     - deploy
