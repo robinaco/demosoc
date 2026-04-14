@@ -59,14 +59,32 @@ test:
 # ============================================
 # SONAR STAGE
 # ============================================
+#sonar:
+#  stage: sonar
+#  needs: ["test"]
+#  dependencies:
+#    - test
+#  script:
+#    - |
+#      ./gradlew sonar --no-daemon \
+#        -Dsonar.host.url=$SONAR_HOST_URL \
+#        -Dsonar.organization=$SONAR_ORG \
+#        -Dsonar.projectKey=$SONAR_PROJECT_KEY \
+#        -Dsonar.token=$SONAR_TOKEN \
+#        -Dsonar.qualitygate.wait=true \
+#        -Dsonar.qualitygate.timeout=600 \
+#        -Dsonar.coverage.jacoco.xmlReportPaths=build/reports/jacoco/test/jacocoTestReport.xml
+#  rules:
+#    - if: $CI_COMMIT_BRANCH == 'main'
+
 sonar:
   stage: sonar
-  needs: ["test"]
-  dependencies:
-    - test
+  image: gradle:8.5-jdk17
+
   script:
+    - chmod +x gradlew
     - |
-      ./gradlew sonar --no-daemon \
+      ./gradlew clean test jacocoTestReport sonar --no-daemon \
         -Dsonar.host.url=$SONAR_HOST_URL \
         -Dsonar.organization=$SONAR_ORG \
         -Dsonar.projectKey=$SONAR_PROJECT_KEY \
@@ -74,6 +92,7 @@ sonar:
         -Dsonar.qualitygate.wait=true \
         -Dsonar.qualitygate.timeout=600 \
         -Dsonar.coverage.jacoco.xmlReportPaths=build/reports/jacoco/test/jacocoTestReport.xml
+
   rules:
     - if: $CI_COMMIT_BRANCH == 'main'
 
