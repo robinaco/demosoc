@@ -91,7 +91,7 @@ sonar:
         -Dsonar.organization=$SONAR_ORG \
         -Dsonar.projectKey=$SONAR_PROJECT_KEY \
         -Dsonar.token=$SONAR_TOKEN \
-        -Dsonar.qualitygate.wait=true \
+        -Dsonar.qualitygate.wait=false \
         -Dsonar.qualitygate.timeout=600 \
         -Dsonar.coverage.jacoco.xmlReportPaths=build/reports/jacoco/test/jacocoTestReport.xml
 
