@@ -185,23 +185,16 @@ owasp-zap-security:
   script:
     - echo "Iniciando escaneo de seguridad OWASP ZAP"
     - echo "OpenAPI URL: $OPENAPI_URL"
-    - HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" $OPENAPI_URL)
-    - echo "Status: $HTTP_CODE"
+    - curl -s -o /dev/null -w "Status: %{http_code}\n" $OPENAPI_URL
     - echo "Ejecutando escaneo de vulnerabilidades..."
     - /zap/zap-api-scan.py -t $OPENAPI_URL -f openapi -r zap_report.html
-    - |
-      EXIT_CODE=$?
-      echo "========================================="
-      echo "ZAP Exit Code: $EXIT_CODE"
-      echo "========================================="
-      if [ $EXIT_CODE -eq 2 ]; then
-        echo "ERROR: Se encontraron vulnerabilidades"
-        exit 1
-      elif [ $EXIT_CODE -eq 1 ]; then
-        echo "WARNING: Se encontraron advertencias"
-      else
-        echo "OK: No se detectaron vulnerabilidades criticas"
-      fi
+    - EXIT_CODE=$?
+    - echo "========================================="
+    - echo "ZAP Exit Code: $EXIT_CODE"
+    - echo "========================================="
+    - if [ $EXIT_CODE -eq 2 ]; then echo "ERROR: Se encontraron vulnerabilidades" && exit 1; fi
+    - if [ $EXIT_CODE -eq 1 ]; then echo "WARNING: Se encontraron advertencias"; fi
+    - if [ $EXIT_CODE -eq 0 ]; then echo "OK: No se detectaron vulnerabilidades criticas"; fi
   artifacts:
     name: "zap-report-${CI_COMMIT_SHORT_SHA}"
     paths:
