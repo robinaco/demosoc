@@ -244,7 +244,7 @@ owasp-zap-security:
         echo "OK: No se detectaron vulnerabilidades criticas"
       fi
 
-    - cp /zap/wrk/zap_report.html ./zap_report.html || true
+    - cp /zap/wrk/zap_report.html .
 
   artifacts:
     name: "zap-report-${CI_COMMIT_SHORT_SHA}"
