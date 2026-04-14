@@ -167,8 +167,7 @@ deploy:
     # Actualizar el servicio de ECS con la nueva revisión
     - aws ecs update-service --cluster $ECS_CLUSTER --service $ECS_SERVICE --task-definition $ECS_TASK_FAMILY:$NEW_TASK_REVISION --force-new-deployment
     
-    - echo "✅ Despliegue completado exitosamente"
-    # - echo "Estado del despliegue: https://console.aws.amazon.com/ecs/home?region=$AWS_REGION#/clusters/$ECS_CLUSTER/services/$ECS_SERVICE"
+    - echo "Deployment completed successfully."
   rules:
     - if: $CI_COMMIT_BRANCH == 'main'
   needs:
