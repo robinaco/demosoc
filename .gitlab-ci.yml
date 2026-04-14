@@ -79,6 +79,8 @@ test:
 
 sonar:
   stage: sonar
+  variables:
+    GIT_DEPTH: 0
   image: gradle:8.5-jdk17
 
   script:
