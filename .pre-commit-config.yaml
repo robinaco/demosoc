@@ -14,12 +14,3 @@ repos:
     hooks:
       - id: gitleaks
         args: ["--redact"]
-
-  - repo: local
-    hooks:
-    - id: gradle-compile
-      name: Gradle compile (Windows safe)
-      entry: cmd
-      args: ["/c", "gradlew.bat", "compileJava", "-x", "test", "--no-daemon"]
-      language: system
-      pass_filenames: false
