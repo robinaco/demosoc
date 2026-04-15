@@ -64,27 +64,41 @@ security-scan:
   stage: security
   image: owasp/dependency-check:latest
 
+  variables:
+    DC_OUTPUT: "dependency-report"
+    GRADLE_OPTS: "-Dorg.gradle.daemon=false"
+
   script:
-    - echo "Running SAST + Secrets + Dependency Check"
+    - echo "Running DevSecOps Security Scan (SAST + Secrets + SCA)"
 
     # =========================
-    # SEMGREP (SAST)
+    # PREP
     # =========================
-    - semgrep --version || true
+    - mkdir -p dependency-report
+
+    # =========================
+    # SEMGREP (SAST - STRICT)
+    # =========================
     - pip install semgrep
-    - semgrep --config=auto --severity ERROR .
+    - semgrep --config=auto --severity ERROR --error || exit 1
 
     # =========================
-    # GITLEAKS (Secrets)
+    # GITLEAKS (SECRETS - STRICT)
     # =========================
     - curl -sSL https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks-linux-amd64 -o gitleaks
     - chmod +x gitleaks
-    - ./gitleaks detect --source . --exit-code 1 --redact
+    - ./gitleaks detect --source . --exit-code 1 --redact || exit 1
 
     # =========================
-    # OWASP DEPENDENCY CHECK
+    # OWASP DEPENDENCY CHECK (GRAILS / JAVA IMPROVED)
     # =========================
-    - dependency-check.sh --project "grails-app" --scan build/ --format ALL --out dependency-report --failOnCVSS 7
+    - /usr/share/dependency-check/bin/dependency-check.sh \
+        --project "grails-app" \
+        --scan . \
+        --format ALL \
+        --out dependency-report \
+        --failOnCVSS 6 \
+        --nvdApiKey $NVD_API_KEY || exit 1
 
   allow_failure: false
 
@@ -116,8 +130,8 @@ sonar:
         -Dsonar.organization=$SONAR_ORG \
         -Dsonar.projectKey=$SONAR_PROJECT_KEY \
         -Dsonar.token=$SONAR_TOKEN \
-        -Dsonar.qualitygate.wait=false \
-        -Dsonar.qualitygate.timeout=600 \
+        -Dsonar.qualitygate.wait=true \
+        -Dsonar.qualitygate.timeout=900 \
         -Dsonar.coverage.jacoco.xmlReportPaths=build/reports/jacoco/test/jacocoTestReport.xml
 
   rules:
