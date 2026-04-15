@@ -3,6 +3,7 @@ image: gradle:8.5-jdk17
 stages:
   - build
   - test
+  - security
   - sonar
   - docker
   - deploy
@@ -58,6 +59,46 @@ test:
   rules:
     - if: $CI_COMMIT_BRANCH == 'main'
     - if: $CI_MERGE_REQUEST_ID
+
+security-scan:
+  stage: security
+  image: owasp/dependency-check:latest
+
+  script:
+    - echo "Running SAST + Secrets + Dependency Check"
+
+    # =========================
+    # SEMGREP (SAST)
+    # =========================
+    - semgrep --version || true
+    - pip install semgrep
+    - semgrep --config=auto --severity ERROR .
+
+    # =========================
+    # GITLEAKS (Secrets)
+    # =========================
+    - curl -sSL https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks-linux-amd64 -o gitleaks
+    - chmod +x gitleaks
+    - ./gitleaks detect --source . --exit-code 1 --redact
+
+    # =========================
+    # OWASP DEPENDENCY CHECK
+    # =========================
+    - dependency-check.sh --project "grails-app" --scan build/ --format ALL --out dependency-report --failOnCVSS 7
+
+  allow_failure: false
+
+  artifacts:
+    when: always
+    paths:
+      - dependency-report/
+
+  rules:
+    - if: $CI_COMMIT_BRANCH == 'main'
+    - if: $CI_MERGE_REQUEST_ID
+
+  needs:
+    - test
 
 sonar:
   before_script:
@@ -185,7 +226,7 @@ deploy:
 owasp-zap-security:
   stage: zap-security
   image: ghcr.io/zaproxy/zaproxy:stable
-  allow_failure: true  # Permite que el job falle sin romper el pipeline
+  allow_failure: false  # Permite que el job falle sin romper el pipeline
   variables:
     OPENAPI_URL: "http://qg-sonar-pipelines-alb-1857521633.us-east-1.elb.amazonaws.com/v3/api-docs"
 
@@ -237,8 +278,8 @@ owasp-zap-security:
   artifacts:
     name: "zap-report-${CI_COMMIT_SHORT_SHA}"
     paths:
-    - /zap/wrk/zap_report.html
-    - /zap/wrk/zap_report.json
+    - zap_report.html
+    - zap_report.json
     expire_in: 30 days
     when: always
 
@@ -247,3 +288,5 @@ owasp-zap-security:
 
   needs:
     - deploy
+
+
