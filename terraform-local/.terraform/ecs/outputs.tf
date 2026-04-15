@@ -32,7 +32,7 @@ output "cloudwatch_log_group" {
 
 output "app_url" {
   description = "URL de la aplicación"
-  value = local.is_production ? 
+  value = local.is_production ?
     "https://console.aws.amazon.com/ecs/home?region=${var.aws_region}#/clusters/${aws_ecs_cluster.main.name}/services/${aws_ecs_service.app.name}/details" :
     "ECS Service: ${aws_ecs_service.app.name} - Check AWS Console for IP"
 }

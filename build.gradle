@@ -293,4 +293,3 @@ tasks.named('sonar').configure {
 check.dependsOn jacocoTestCoverageVerification
 test.finalizedBy jacocoTestReport
 check.dependsOn weightedCoverageCheck
-

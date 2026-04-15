@@ -78,3 +78,20 @@ Thumbs.db
 .terraform.lock.hcl
 *.tfstate
 *.tfstate.backup
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+
+# Gradle
+.gradle/
+build/
+
+# IDE
+.idea/
+.vscode/
+
+# Logs
+*.log

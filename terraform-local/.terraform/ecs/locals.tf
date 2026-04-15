@@ -11,10 +11,10 @@ locals {
     Project     = "demosoc"
     PrNumber    = var.pr_number != "" ? var.pr_number : "none"
   }
-  
+
   is_production = var.environment == "production"
   is_pr         = can(regex("^pr-", var.environment))
-  
+
   # Configuración según ambiente
   task_config = local.is_production ? {
     cpu           = 512

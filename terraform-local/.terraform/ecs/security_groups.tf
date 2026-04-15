@@ -1,7 +1,7 @@
 # Define reglas de firewall (Security Groups)
 # - app: grupo de seguridad que controla el tráfico hacia/desde la aplicación
 # - Reglas de ingreso: qué tráfico entra (ej. puerto 8080 desde cualquier IP)
-# - Reglas de egreso: qué tráfico sale (todo permitido) 
+# - Reglas de egreso: qué tráfico sale (todo permitido)
 
 
 # Security Group para la aplicación

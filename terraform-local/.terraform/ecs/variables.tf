@@ -15,7 +15,7 @@ variable "app_image" {
 variable "environment" {
   description = "Ambiente (pr-XXX, staging, production)"
   type        = string
-  
+
   validation {
     condition     = can(regex("^(pr-|staging|production)", var.environment))
     error_message = "Environment debe ser pr-XXX, staging o production"

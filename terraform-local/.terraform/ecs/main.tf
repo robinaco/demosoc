@@ -7,7 +7,7 @@
 # CloudWatch Log Group
 resource "aws_cloudwatch_log_group" "ecs" {
   name = "/ecs/app-${var.environment}"
-  
+
   retention_in_days = local.is_production ? 30 : 7
 
   tags = local.common_tags
@@ -16,7 +16,7 @@ resource "aws_cloudwatch_log_group" "ecs" {
 # ECS Cluster
 resource "aws_ecs_cluster" "main" {
   name = "cluster-${var.environment}"
-  
+
   setting {
     name  = "containerInsights"
     value = local.is_production ? "enabled" : "disabled"

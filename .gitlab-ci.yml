@@ -19,7 +19,7 @@ variables:
   AWS_REGION: 'us-east-1'
   ECR_REPOSITORY: 'qg-sonar-pipelines'
   IMAGE_NAME: 'qg-sonar-pipelines'
-  
+
   # ECS Configuration
   ECS_CLUSTER: 'qg-sonar-pipelines'
   ECS_SERVICE: 'qg-sonar-pipelines-service'
@@ -156,18 +156,18 @@ docker:
     - aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
     - aws configure set region $AWS_REGION
     - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
-    
+
     # Construir imagen
     - docker build -t $IMAGE_NAME:$CI_COMMIT_SHORT_SHA -t $IMAGE_NAME:latest .
-    
+
     # Taggear para ECR
     - docker tag $IMAGE_NAME:$CI_COMMIT_SHORT_SHA $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:$CI_COMMIT_SHORT_SHA
     - docker tag $IMAGE_NAME:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:latest
-    
+
     # Push a ECR
     - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:$CI_COMMIT_SHORT_SHA
     - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:latest
-    
+
     # Guardar variables para el siguiente job
     - echo "IMAGE_TAG=$CI_COMMIT_SHORT_SHA" > build.env
     - echo "DOCKER_IMAGE=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:$CI_COMMIT_SHORT_SHA" >> build.env
@@ -195,10 +195,10 @@ deploy:
     - aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
     - aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
     - aws configure set region $AWS_REGION
-    
+
     # Obtener la definición de tarea actual
     - TASK_DEF=$(aws ecs describe-task-definition --task-definition $ECS_TASK_FAMILY)
-    
+
     # Crear nueva definición con la imagen actualizada
     - |
       NEW_TASK_DEF=$(echo "$TASK_DEF" | jq --arg IMAGE "$DOCKER_IMAGE" '
@@ -216,18 +216,18 @@ deploy:
           taskRoleArn: .taskRoleArn
         }
       ')
-    
+
     - echo "$NEW_TASK_DEF" > task-def.json
-    
+
     # Registrar nueva definición de tarea
     - aws ecs register-task-definition --cli-input-json file://task-def.json
-    
+
     # Obtener la nueva versión de la definición de tarea
     - NEW_TASK_REVISION=$(aws ecs register-task-definition --cli-input-json file://task-def.json | jq -r '.taskDefinition.revision')
-    
+
     # Actualizar el servicio de ECS con la nueva revisión
     - aws ecs update-service --cluster $ECS_CLUSTER --service $ECS_SERVICE --task-definition $ECS_TASK_FAMILY:$NEW_TASK_REVISION --force-new-deployment
-    
+
     - echo "Deployment completed successfully."
   rules:
     - if: $CI_COMMIT_BRANCH == 'main'
@@ -246,15 +246,15 @@ owasp-zap-security:
 
   script:
     - mkdir -p /zap/wrk
-    
+
     - |
       echo "Starting OWASP ZAP security scan"
       echo "OpenAPI URL: $OPENAPI_URL"
-      
+
       curl -s -o /dev/null $OPENAPI_URL && echo "Status: 200 OK" || echo "Status: ERROR"
-      
+
       echo "Starting vulnerability scan..."
-      
+
       # Ejecutar ZAP y capturar el código de salida
       /zap/zap-api-scan.py \
         -t $OPENAPI_URL \
@@ -262,15 +262,15 @@ owasp-zap-security:
         -r /zap/wrk/zap_report.html \
         -J /zap/wrk/zap_report.json \
         -I
-      
+
       ZAP_EXIT=$?
-      
+
       echo "========================================="
       echo "ZAP Exit Code: $ZAP_EXIT"
       echo "========================================="
-      
+
       # Always attempt to copy the report, even if there are errors.
-      
+
     # Copiar el reporte si existe
     - |
       if [ -f /zap/wrk/zap_report.html ]; then
@@ -281,7 +281,7 @@ owasp-zap-security:
         # Generate a simple report if it does not exist.
         echo "<html><body><h1>ZAP Scan Completed</h1><p>Exit code: $ZAP_EXIT</p></body></html>" > zap_report.html
       fi
-    
+
     # También buscar el reporte JSON como respaldo
     - |
       if [ -f /zap/wrk/zap_report.json ]; then
@@ -302,5 +302,3 @@ owasp-zap-security:
 
   needs:
     - deploy
-
-
