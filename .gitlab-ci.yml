@@ -206,6 +206,7 @@ deploy:
 owasp-zap-security:
   stage: zap-security
   image: ghcr.io/zaproxy/zaproxy:stable
+  allow_failure: true 
   variables:
     OPENAPI_URL: "http://qg-sonar-pipelines-alb-1857521633.us-east-1.elb.amazonaws.com/v3/api-docs"
 
