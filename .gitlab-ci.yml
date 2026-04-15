@@ -214,18 +214,20 @@ owasp-zap-security:
     - mkdir -p /zap/wrk
     
     - |
-      echo "Iniciando escaneo de seguridad OWASP ZAP"
+      echo "Starting OWASP ZAP security scan"
       echo "OpenAPI URL: $OPENAPI_URL"
       
       curl -s -o /dev/null $OPENAPI_URL && echo "Status: 200 OK" || echo "Status: ERROR"
       
-      echo "Ejecutando escaneo de vulnerabilidades..."
+      echo "Starting vulnerability scan..."
       
       # Ejecutar ZAP y capturar el código de salida
       /zap/zap-api-scan.py \
         -t $OPENAPI_URL \
         -f openapi \
-        -r /zap/wrk/zap_report.html
+        -r /zap/wrk/zap_report.html \
+        -J /zap/wrk/zap_report.json \
+        -I
       
       ZAP_EXIT=$?
       
@@ -233,16 +235,16 @@ owasp-zap-security:
       echo "ZAP Exit Code: $ZAP_EXIT"
       echo "========================================="
       
-      # Siempre intentar copiar el reporte, incluso si hay errores
+      # Always attempt to copy the report, even if there are errors.
       
     # Copiar el reporte si existe
     - |
       if [ -f /zap/wrk/zap_report.html ]; then
         cp /zap/wrk/zap_report.html .
-        echo "Reporte copiado exitosamente"
+        echo "Report copied successfully."
       else
-        echo "WARNING: No se generó el reporte HTML"
-        # Generar un reporte simple si no existe
+        echo "WARNING: The HTML report was not generated."
+        # Generate a simple report if it does not exist.
         echo "<html><body><h1>ZAP Scan Completed</h1><p>Exit code: $ZAP_EXIT</p></body></html>" > zap_report.html
       fi
     
@@ -250,14 +252,14 @@ owasp-zap-security:
     - |
       if [ -f /zap/wrk/zap_report.json ]; then
         cp /zap/wrk/zap_report.json .
-        echo "Reporte JSON copiado"
+        echo "Report copied successfully."
       fi
 
   artifacts:
     name: "zap-report-${CI_COMMIT_SHORT_SHA}"
     paths:
-      - zap_report.html
-      - zap_report.json
+    - /zap/wrk/zap_report.html
+    - /zap/wrk/zap_report.json
     expire_in: 30 days
     when: always
 
